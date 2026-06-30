@@ -69,38 +69,45 @@ body {
 
 .table-responsive {
     border: 1px solid var(--border-color);
-    border-radius: 10px;
+    border-radius: 14px;
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
+    background: rgba(255, 255, 255, 0.03);
 }
 
 .table-custom {
     min-width: 560px;
     color: #eef2ff !important;
     margin-bottom: 0;
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+.table-custom th,
+.table-custom td {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    padding: 0.8rem 0.85rem;
 }
 
 .table-custom th {
-    background-color: rgba(0, 0, 0, 0.2) !important;
-    color: #8a8a93;
-    font-size: 0.8rem;
+    background-color: rgba(255, 255, 255, 0.04) !important;
+    color: #cbd5e1;
+    font-size: 0.78rem;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
-    border-bottom: 1px solid var(--border-color);
+    letter-spacing: 0.45px;
 }
 
 .table-custom td {
-    border-bottom: 1px solid rgba(255, 255, 255, 0.03);
-    padding: 0.75rem;
+    color: #eef2ff;
 }
 
-@media (max-width: 576px) {
-    body {
-        padding: 0.75rem 0 1.5rem;
-    }
+.table-custom tr:last-child td {
+    border-bottom: none;
+}
 
-    .container {
-        max-width: 100% !important;
+@media (max-width: 768px) {
+    .table-custom {
+        min-width: 100%;
     }
 
     .card-custom {
@@ -111,5 +118,32 @@ body {
     .btn-outline-light,
     .btn-outline-success {
         width: 100%;
+    }
+}
+
+@media (max-width: 576px) {
+    body {
+        padding: 0.75rem 0 1.25rem;
+    }
+
+    .container,
+    .container-fluid {
+        padding-left: 1rem;
+        padding-right: 1rem;
+    }
+
+    .card-custom {
+        border-radius: 12px;
+        padding: 1.25rem;
+    }
+
+    .form-control,
+    .form-select {
+        font-size: 0.95rem;
+    }
+
+    .table-custom th,
+    .table-custom td {
+        padding: 0.75rem 0.6rem;
     }
 }

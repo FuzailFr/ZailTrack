@@ -1,5 +1,9 @@
 const API_URL = "/api";
 
+function alertMessage(message) {
+    window.alert(message);
+}
+
 async function requestJson(url, options = {}) {
     const response = await fetch(url, {
         headers: { Accept: "application/json", ...(options.headers || {}) },
@@ -20,7 +24,7 @@ async function authRegister(e) {
     const password = document.getElementById("regPass")?.value.trim();
 
     if (!username || !password) {
-        alert("Username dan password wajib diisi.");
+        alertMessage("Username dan password wajib diisi.");
         return;
     }
 
@@ -30,7 +34,7 @@ async function authRegister(e) {
         body: JSON.stringify({ username, password })
     });
 
-    alert(data.message || "Registrasi selesai.");
+    alertMessage(data.message || "Registrasi selesai.");
     if (data.status === "success") {
         window.location.href = "/index";
     }
@@ -42,7 +46,7 @@ async function authLogin(e) {
     const password = document.getElementById("logPass")?.value.trim();
 
     if (!username || !password) {
-        alert("Username dan password wajib diisi.");
+        alertMessage("Username dan password wajib diisi.");
         return;
     }
 
@@ -57,7 +61,7 @@ async function authLogin(e) {
         localStorage.setItem("username", data.username);
         window.location.href = "/dashboard";
     } else {
-        alert(data.message || "Login gagal.");
+        alertMessage(data.message || "Login gagal.");
     }
 }
 
@@ -74,26 +78,31 @@ async function loadDashboardData() {
     }
 
     const { data } = await requestJson(`${API_URL}/get_dashboard?user_id=${user_id}`);
-    if (data.status === "success") {
-        document.getElementById("sumIncome").innerText = "Rp " + Number(data.summary?.income || 0).toLocaleString("id-ID");
-        document.getElementById("sumExpense").innerText = "Rp " + Number(data.summary?.expense || 0).toLocaleString("id-ID");
-        document.getElementById("sumSaldo").innerText = "Rp " + Number(data.summary?.saldo || 0).toLocaleString("id-ID");
+    if (data.status !== "success") {
+        alertMessage(data.message || "Gagal memuat data dashboard.");
+        return;
+    }
 
-        let rows = "";
-        if (Array.isArray(data.transactions) && data.transactions.length > 0) {
-            data.transactions.forEach((t) => {
-                rows += `<tr>
-                    <td>${t.tanggal || "-"}</td>
-                    <td><span class="badge ${t.tipe === "income" ? "bg-success text-dark" : "bg-danger"}">${t.tipe === "income" ? "Masuk" : "Keluar"}</span></td>
-                    <td class="fw-bold text-white">Rp ${Number(t.jumlah || 0).toLocaleString("id-ID")}</td>
-                    <td>${t.deskripsi || "-"}</td>
-                </tr>`;
-            });
-        } else {
-            rows = `<tr><td colspan="4" class="text-center text-muted py-3">Belum ada transaksi</td></tr>`;
-        }
+    document.getElementById("sumIncome").innerText = "Rp " + Number(data.summary?.income || 0).toLocaleString("id-ID");
+    document.getElementById("sumExpense").innerText = "Rp " + Number(data.summary?.expense || 0).toLocaleString("id-ID");
+    document.getElementById("sumSaldo").innerText = "Rp " + Number(data.summary?.saldo || 0).toLocaleString("id-ID");
 
-        document.getElementById("trxTable").innerHTML = rows;
+    const tableBody = document.getElementById("trxTable");
+    if (!tableBody) {
+        return;
+    }
+
+    if (Array.isArray(data.transactions) && data.transactions.length > 0) {
+        tableBody.innerHTML = data.transactions.map((t) => `
+            <tr>
+                <td>${t.tanggal || "-"}</td>
+                <td><span class="badge ${t.tipe === "income" ? "bg-success text-dark" : "bg-danger"}">${t.tipe === "income" ? "Masuk" : "Keluar"}</span></td>
+                <td class="fw-bold text-white">Rp ${Number(t.jumlah || 0).toLocaleString("id-ID")}</td>
+                <td>${t.deskripsi ? t.deskripsi : "-"}</td>
+            </tr>
+        `).join('');
+    } else {
+        tableBody.innerHTML = `<tr><td colspan="4" class="text-center text-muted py-3">Belum ada transaksi</td></tr>`;
     }
 }
 
@@ -104,6 +113,11 @@ async function simpanTransaksi(e) {
     const jumlah = document.getElementById("txJumlah")?.value;
     const tanggal = document.getElementById("txTanggal")?.value;
     const deskripsi = document.getElementById("txDeskripsi")?.value;
+
+    if (!user_id || !tipe || !jumlah || !tanggal) {
+        alertMessage("Lengkapi semua data transaksi terlebih dahulu.");
+        return;
+    }
 
     const { data } = await requestJson(`${API_URL}/simpan`, {
         method: "POST",
@@ -117,12 +131,16 @@ async function simpanTransaksi(e) {
         if (modal) modal.hide();
         await loadDashboardData();
     } else {
-        alert(data.message || "Gagal menyimpan data.");
+        alertMessage(data.message || "Gagal menyimpan data.");
     }
 }
 
 function downloadExcel() {
     const user_id = localStorage.getItem("user_id");
+    if (!user_id) {
+        window.location.href = "/index";
+        return;
+    }
     window.location.href = `${API_URL}/export?user_id=${user_id}`;
 }
 

@@ -13,23 +13,25 @@ header("X-Content-Type-Options: nosniff");
 </head>
 <body>
 
-<nav class="navbar navbar-dark mb-4 py-3" style="background: rgba(0,0,0,0.15); border-bottom: 1px solid var(--border-color);">
-    <div class="container px-3">
+<nav class="navbar navbar-dark mb-4 py-3" style="background: rgba(0,0,0,0.20); border-bottom: 1px solid var(--border-color); backdrop-filter: blur(10px);">
+    <div class="container-fluid px-3">
         <span class="navbar-brand h5 fw-bold mb-0">🖤 ZailTrack</span>
         <button onclick="logout()" class="btn btn-sm btn-outline-light px-3">Keluar</button>
     </div>
 </nav>
 
-<div class="container px-3 fade-in">
-    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
-        <h4 id="welcomeTxt" class="fw-bold m-0">⚡ Dashboard</h4>
-        <div class="d-flex gap-2">
-            <button onclick="downloadExcel()" class="btn btn-outline-success btn-sm px-3">📊 Excel</button>
+<div class="container-fluid px-3 fade-in" style="max-width: 1120px;">
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-column flex-md-row gap-3">
+        <div>
+            <h4 id="welcomeTxt" class="fw-bold m-0">⚡ Dashboard</h4>
+            <p class="small text-muted mb-0">Kelola catatan keuangan Anda dengan cepat dan aman.</p>
+        </div>
+        <div class="d-flex flex-wrap gap-2">
+            <button onclick="downloadExcel()" class="btn btn-outline-success btn-sm px-3">📊 Export</button>
             <button class="btn btn-premium btn-sm px-3" data-bs-toggle="modal" data-bs-target="#addModal">+ Catat</button>
         </div>
     </div>
 
-    <!-- Grid Ringkasan Diperbaiki: 1 kolom di HP, 3 kolom di Desktop -->
     <div class="row g-3 mb-4">
         <div class="col-12 col-md-4">
             <div class="card card-custom p-3">
@@ -70,23 +72,31 @@ header("X-Content-Type-Options: nosniff");
     </div>
 </div>
 
-<!-- Modal Dialog Tambah Transaksi -->
 <div class="modal fade" id="addModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered" style="max-width: 360px;">
-    <div class="modal-content card-custom p-2 text-white" style="background: #16161a;">
+  <div class="modal-dialog modal-dialog-centered" style="max-width: 400px;">
+    <div class="modal-content card-custom p-2 text-white" style="background: rgba(22,22,26,0.95);">
       <div class="modal-body">
         <h6 class="fw-bold mb-3 text-white">Tambah Catatan Finansial</h6>
         <form id="trxForm">
-            <div class="mb-2">
+            <div class="mb-3">
                 <label class="small text-muted mb-1">Tipe Transaksi</label>
                 <select id="txTipe" class="form-select form-select-sm">
                     <option value="income">Pemasukan</option>
                     <option value="expense">Pengeluaran</option>
                 </select>
             </div>
-            <div class="mb-2"><label class="small text-muted mb-1">Nominal (Rp)</label><input type="number" id="txJumlah" class="form-control form-control-sm" required></div>
-            <div class="mb-2"><label class="small text-muted mb-1">Tanggal</label><input type="date" id="txTanggal" class="form-control form-control-sm" required></div>
-            <div class="mb-3"><label class="small text-muted mb-1">Deskripsi / Memo</label><input type="text" id="txDeskripsi" class="form-control form-control-sm"></div>
+            <div class="mb-3">
+                <label class="small text-muted mb-1">Nominal (Rp)</label>
+                <input type="number" id="txJumlah" class="form-control form-control-sm" min="0" step="0.01" required>
+            </div>
+            <div class="mb-3">
+                <label class="small text-muted mb-1">Tanggal</label>
+                <input type="date" id="txTanggal" class="form-control form-control-sm" required>
+            </div>
+            <div class="mb-3">
+                <label class="small text-muted mb-1">Deskripsi / Memo</label>
+                <input type="text" id="txDeskripsi" class="form-control form-control-sm" placeholder="Opsional">
+            </div>
             <button type="submit" class="btn btn-premium btn-sm w-100 py-2">Simpan Catatan</button>
         </form>
       </div>
@@ -97,7 +107,14 @@ header("X-Content-Type-Options: nosniff");
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="assets/js/app.js"></script>
 <script>
-    document.addEventListener("DOMContentLoaded", loadDashboardData);
+    document.addEventListener('DOMContentLoaded', function () {
+        if (!localStorage.getItem('user_id')) {
+            window.location.href = '/index';
+            return;
+        }
+        loadDashboardData();
+    });
+
     document.getElementById('trxForm').addEventListener('submit', simpanTransaksi);
 </script>
 </body>

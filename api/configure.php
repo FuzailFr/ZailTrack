@@ -1,11 +1,9 @@
 <?php
 mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
-session_start();
 
 header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type");
-header("Content-Type: application/json; charset=UTF-8");
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(200);
@@ -24,12 +22,12 @@ try {
     }
 
     mysqli_set_charset($conn, 'utf8mb4');
-    
+
     $createDb = mysqli_query($conn, "CREATE DATABASE IF NOT EXISTS `$db` CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci");
     if (!$createDb) {
         throw new Exception("Gagal membuat database: " . mysqli_error($conn));
     }
-    
+
     if (!mysqli_select_db($conn, $db)) {
         throw new Exception("Gagal memilih database: " . mysqli_error($conn));
     }
@@ -40,7 +38,6 @@ try {
         password VARCHAR(255) NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;");
-    
     if (!$createUsers) {
         throw new Exception("Gagal membuat tabel users: " . mysqli_error($conn));
     }
@@ -56,12 +53,12 @@ try {
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
         INDEX idx_user_date (user_id, tanggal DESC)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;");
-    
     if (!$createTransactions) {
         throw new Exception("Gagal membuat tabel transactions: " . mysqli_error($conn));
     }
 } catch (Exception $e) {
     http_response_code(500);
+    header("Content-Type: application/json; charset=UTF-8");
     echo json_encode(["status" => "error", "message" => $e->getMessage()]);
     exit;
 }

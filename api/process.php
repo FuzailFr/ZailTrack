@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/configure.php';
+header("Content-Type: application/json; charset=UTF-8");
 
 function sendJson(array $payload): void {
     echo json_encode($payload, JSON_UNESCAPED_UNICODE);
