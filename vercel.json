@@ -2,27 +2,21 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "version": 2,
   "functions": {
-    "api/**/*.php": {
-      "runtime": "vercel-php@0.7.2"
-    },
-    "index.php": {
-      "runtime": "vercel-php@0.7.2"
-    },
-    "dashboard.php": {
+    "**/*.php": {
       "runtime": "vercel-php@0.7.2"
     }
   },
   "routes": [
-    { "src": "/assets/(.*)", "dest": "/assets/$1" },
     { "src": "/api/register", "dest": "/api/process.php?action=register", "methods": ["POST"] },
     { "src": "/api/login", "dest": "/api/process.php?action=login", "methods": ["POST"] },
     { "src": "/api/get_dashboard", "dest": "/api/process.php?action=get_dashboard", "methods": ["GET"] },
     { "src": "/api/simpan", "dest": "/api/process.php?action=simpan", "methods": ["POST"] },
     { "src": "/api/export", "dest": "/api/process.php?action=export", "methods": ["GET"] },
     { "src": "/dashboard", "dest": "/dashboard.php" },
-    { "src": "/dashboard.php", "dest": "/dashboard.php" },
+    { "src": "/dashboard\\.php", "dest": "/dashboard.php" },
     { "src": "/index", "dest": "/index.php" },
-    { "src": "/index.php", "dest": "/index.php" },
-    { "src": "/", "dest": "/index.php" }
+    { "src": "/index\\.php", "dest": "/index.php" },
+    { "src": "/assets/(.*)", "dest": "/assets/$1" },
+    { "src": "/(.*)", "dest": "/index.php" }
   ]
 }
