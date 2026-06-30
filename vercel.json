@@ -4,9 +4,6 @@
   "functions": {
     "api/**/*.php": {
       "runtime": "vercel-php@0.7.2"
-    },
-    "*.php": {
-      "runtime": "vercel-php@0.7.2"
     }
   },
   "routes": [
@@ -18,8 +15,6 @@
     { "src": "/api/export", "dest": "/api/process.php?action=export", "methods": ["GET"] },
     { "src": "/dashboard", "dest": "/dashboard.php" },
     { "src": "/index", "dest": "/index.php" },
-    { "src": "/", "dest": "/index.php" },
-    { "src": "/(.*)\\.php$", "dest": "/$1.php" },
-    { "src": "/(.*)", "dest": "/index.php" }
+    { "src": "/", "dest": "/index.php" }
   ]
 }
