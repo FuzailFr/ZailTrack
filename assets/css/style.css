@@ -1,0 +1,71 @@
+body {
+    background-color: #121212;
+    color: #e0e0e0;
+    font-family: system-ui, -apple-system, sans-serif;
+}
+
+/* Gradient Header/Navbar */
+.navbar-custom {
+    background: linear-gradient(135deg, #1f1f1f 0%, #0a0a0a 100%);
+    border-bottom: 1px solid #333;
+}
+
+/* Card Styling (Glassmorphism & Dark Concept) */
+.card-custom {
+    background: #1e1e1e;
+    border: 1px solid #2d2d2d;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+    color: #ffffff;
+}
+
+.card-custom .card-header {
+    background: transparent;
+    border-bottom: 1px solid #2d2d2d;
+    font-weight: 600;
+}
+
+/* Badge & Text Gradients */
+.text-gradient-income {
+    background: linear-gradient(45deg, #b5ff7d, #52c234);
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.text-gradient-expense {
+    background: linear-gradient(45deg, #ff9999, #ff416c);
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+/* Tables */
+.table-dark-custom {
+    background-color: #1e1e1e !important;
+    color: #e0e0e0 !important;
+    border-color: #2d2d2d;
+}
+
+.table-dark-custom th {
+    background-color: #151515 !important;
+    color: #ffffff;
+}
+
+/* Form Controls */
+.form-control, .form-select {
+    background-color: #252525 !important;
+    border: 1px solid #3d3d3d !important;
+    color: #ffffff !important;
+}
+
+.form-control:focus, .form-select:focus {
+    border-color: #888 !important;
+    box-shadow: 0 0 0 0.25rem rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Responsive utilities */
+@media(max-width:768px){
+    h2 { font-size: 1.3rem; }
+    .table { font-size: 12px; }
+}
