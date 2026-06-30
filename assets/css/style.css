@@ -1,71 +1,115 @@
+:root {
+    --bg-gradient: linear-gradient(135deg, #06070a 0%, #14161a 100%);
+    --card-bg: rgba(255, 255, 255, 0.03);
+    --border-color: rgba(255, 255, 255, 0.08);
+}
+
+* {
+    box-sizing: border-box;
+}
+
 body {
-    background-color: #121212;
-    color: #e0e0e0;
-    font-family: system-ui, -apple-system, sans-serif;
+    background: var(--bg-gradient);
+    color: #f5f7fa;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    min-height: 100vh;
+    margin: 0;
+    padding: 1rem 0 2rem;
+    overflow-x: hidden;
 }
 
-/* Gradient Header/Navbar */
-.navbar-custom {
-    background: linear-gradient(135deg, #1f1f1f 0%, #0a0a0a 100%);
-    border-bottom: 1px solid #333;
+.text-muted {
+    color: #9aa0aa !important;
 }
 
-/* Card Styling (Glassmorphism & Dark Concept) */
+.fade-in {
+    animation: fadeInY 0.45s ease forwards;
+}
+
+@keyframes fadeInY {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
 .card-custom {
-    background: #1e1e1e;
-    border: 1px solid #2d2d2d;
-    border-radius: 12px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.5);
-    color: #ffffff;
+    background: var(--card-bg);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 1px solid var(--border-color);
+    border-radius: 14px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.24);
 }
 
-.card-custom .card-header {
-    background: transparent;
-    border-bottom: 1px solid #2d2d2d;
+.btn-premium {
+    background: #ffffff;
+    color: #000000;
     font-weight: 600;
+    border: none;
+    border-radius: 8px;
+    transition: transform 0.2s ease, background-color 0.2s ease;
 }
 
-/* Badge & Text Gradients */
-.text-gradient-income {
-    background: linear-gradient(45deg, #b5ff7d, #52c234);
-    background-clip: text;
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
+.btn-premium:hover {
+    background: #e5e5e5;
+    transform: translateY(-1px);
 }
 
-.text-gradient-expense {
-    background: linear-gradient(45deg, #ff9999, #ff416c);
-    background-clip: text;
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-}
-
-/* Tables */
-.table-dark-custom {
-    background-color: #1e1e1e !important;
-    color: #e0e0e0 !important;
-    border-color: #2d2d2d;
-}
-
-.table-dark-custom th {
-    background-color: #151515 !important;
-    color: #ffffff;
-}
-
-/* Form Controls */
 .form-control, .form-select {
-    background-color: #252525 !important;
-    border: 1px solid #3d3d3d !important;
-    color: #ffffff !important;
+    background: rgba(255, 255, 255, 0.04) !important;
+    border: 1px solid var(--border-color) !important;
+    color: #fff !important;
+    border-radius: 8px;
+    padding: 0.65rem 0.75rem;
 }
 
 .form-control:focus, .form-select:focus {
-    border-color: #888 !important;
-    box-shadow: 0 0 0 0.25rem rgba(255, 255, 255, 0.1) !important;
+    border-color: rgba(255, 255, 255, 0.25) !important;
+    box-shadow: none !important;
 }
 
-/* Responsive utilities */
-@media(max-width:768px){
-    h2 { font-size: 1.3rem; }
-    .table { font-size: 12px; }
+.table-responsive {
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.table-custom {
+    min-width: 560px;
+    color: #eef2ff !important;
+    margin-bottom: 0;
+}
+
+.table-custom th {
+    background-color: rgba(0, 0, 0, 0.2) !important;
+    color: #8a8a93;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.table-custom td {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+    padding: 0.75rem;
+}
+
+@media (max-width: 576px) {
+    body {
+        padding: 0.75rem 0 1.5rem;
+    }
+
+    .container {
+        max-width: 100% !important;
+    }
+
+    .card-custom {
+        border-radius: 12px;
+    }
+
+    .btn-premium,
+    .btn-outline-light,
+    .btn-outline-success {
+        width: 100%;
+    }
 }

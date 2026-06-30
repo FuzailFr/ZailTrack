@@ -1,106 +1,178 @@
 <?php
-include 'configure.php';
+require_once __DIR__ . '/configure.php';
 
-global $conn;
+function sendJson(array $payload): void {
+    echo json_encode($payload, JSON_UNESCAPED_UNICODE);
+    exit;
+}
 
-$action = $_GET['action'] ?? $_POST['action'] ?? '';
+function getJsonInput(): array {
+    $raw = file_get_contents('php://input');
+    if ($raw === false || trim($raw) === '') {
+        return [];
+    }
 
-// --- 1. PROSES REGISTER ---
+    $data = json_decode($raw, true);
+    return is_array($data) ? $data : [];
+}
+
+$action = $_GET['action'] ?? '';
+
 if ($action === 'register') {
-    $data = json_decode(file_get_contents("php://input"), true);
-    $username = mysqli_real_escape_string($conn, $data['username']);
-    $password = password_hash($data['password'], PASSWORD_BCRYPT);
+    $data = getJsonInput();
+    $username = trim($data['username'] ?? '');
+    $password = trim($data['password'] ?? '');
 
-    $query = "INSERT INTO users (username, password) VALUES ('$username', '$password')";
-    if (mysqli_query($conn, $query)) {
-        echo json_encode(["status" => "success", "message" => "Registrasi berhasil! Silakan masuk."]);
-    } else {
-        echo json_encode(["status" => "error", "message" => "Username sudah digunakan."]);
+    if ($username === '' || $password === '') {
+        sendJson(["status" => "error", "message" => "Data tidak boleh kosong."]);
     }
+
+    $passwordHash = password_hash($password, PASSWORD_BCRYPT);
+    $stmt = mysqli_prepare($conn, "INSERT INTO users (username, password) VALUES (?, ?)");
+    if (!$stmt) {
+        sendJson(["status" => "error", "message" => "Gagal menyiapkan query."]);
+    }
+
+    mysqli_stmt_bind_param($stmt, "ss", $username, $passwordHash);
+    if (mysqli_stmt_execute($stmt)) {
+        mysqli_stmt_close($stmt);
+        sendJson(["status" => "success", "message" => "Registrasi berhasil!"]);
+    }
+
+    mysqli_stmt_close($stmt);
+    sendJson(["status" => "error", "message" => "Username sudah terdaftar."]);
 }
 
-// --- 2. PROSES LOGIN ---
 elseif ($action === 'login') {
-    $data = json_decode(file_get_contents("php://input"), true);
-    $username = mysqli_real_escape_string($conn, $data['username']);
-    $password = $data['password'];
+    $data = getJsonInput();
+    $username = trim($data['username'] ?? '');
+    $password = trim($data['password'] ?? '');
 
-    $result = mysqli_query($conn, "SELECT * FROM users WHERE username='$username'");
-    if (mysqli_num_rows($result) > 0) {
-        $user = mysqli_fetch_assoc($result);
-        if (password_verify($password, $user['password'])) {
-            $_SESSION['user_id'] = $user['id'];
-            $_SESSION['username'] = $user['username'];
-            echo json_encode(["status" => "success", "user_id" => $user['id'], "username" => $user['username']]);
-            exit;
-        }
+    if ($username === '' || $password === '') {
+        sendJson(["status" => "error", "message" => "Username atau password tidak boleh kosong."]);
     }
-    echo json_encode(["status" => "error", "message" => "Username atau password salah."]);
+
+    $stmt = mysqli_prepare($conn, "SELECT id, username, password FROM users WHERE username = ? LIMIT 1");
+    if (!$stmt) {
+        sendJson(["status" => "error", "message" => "Gagal menyiapkan query."]);
+    }
+
+    mysqli_stmt_bind_param($stmt, "s", $username);
+    mysqli_stmt_execute($stmt);
+    $result = mysqli_stmt_get_result($stmt);
+    $user = mysqli_fetch_assoc($result);
+    mysqli_stmt_close($stmt);
+
+    if ($user && password_verify($password, $user['password'])) {
+        sendJson(["status" => "success", "user_id" => (int)$user['id'], "username" => $user['username']]);
+    }
+
+    sendJson(["status" => "error", "message" => "Username atau password salah."]);
 }
 
-// --- 3. AMBIL DATA DASHBOARD ---
 elseif ($action === 'get_dashboard') {
-    $user_id = $_GET['user_id'] ?? null;
-    if (!$user_id) { echo json_encode(["status" => "unauthorized"]); exit; }
+    $user_id = (int)($_GET['user_id'] ?? 0);
+    if ($user_id <= 0) {
+        sendJson(["status" => "unauthorized"]);
+    }
 
-    $bulan = $_GET['bulan'] ?? date('m');
-    $tahun = $_GET['tahun'] ?? date('Y');
+    $bulan = date('m');
+    $tahun = date('Y');
 
-    $inc_q = mysqli_fetch_assoc(mysqli_query($conn, "SELECT IFNULL(SUM(jumlah),0) AS total FROM transactions WHERE user_id='$user_id' AND tipe='income' AND MONTH(tanggal)='$bulan' AND YEAR(tanggal)='$tahun'"));
-    $exp_q = mysqli_fetch_assoc(mysqli_query($conn, "SELECT IFNULL(SUM(jumlah),0) AS total FROM transactions WHERE user_id='$user_id' AND tipe='expense' AND MONTH(tanggal)='$bulan' AND YEAR(tanggal)='$tahun'"));
-    
-    $total_income = (float)$inc_q['total'];
-    $total_expense = (float)$exp_q['total'];
+    $stmt = mysqli_prepare($conn, "SELECT IFNULL(SUM(jumlah), 0) AS total FROM transactions WHERE user_id = ? AND tipe = 'income' AND MONTH(tanggal) = ? AND YEAR(tanggal) = ?");
+    mysqli_stmt_bind_param($stmt, "iii", $user_id, $bulan, $tahun);
+    mysqli_stmt_execute($stmt);
+    $incomeResult = mysqli_stmt_get_result($stmt);
+    $incomeRow = mysqli_fetch_assoc($incomeResult);
+    mysqli_stmt_close($stmt);
+
+    $stmt = mysqli_prepare($conn, "SELECT IFNULL(SUM(jumlah), 0) AS total FROM transactions WHERE user_id = ? AND tipe = 'expense' AND MONTH(tanggal) = ? AND YEAR(tanggal) = ?");
+    mysqli_stmt_bind_param($stmt, "iii", $user_id, $bulan, $tahun);
+    mysqli_stmt_execute($stmt);
+    $expenseResult = mysqli_stmt_get_result($stmt);
+    $expenseRow = mysqli_fetch_assoc($expenseResult);
+    mysqli_stmt_close($stmt);
+
+    $total_income = (float)($incomeRow['total'] ?? 0);
+    $total_expense = (float)($expenseRow['total'] ?? 0);
     $saldo = $total_income - $total_expense;
 
-    $trx_q = mysqli_query($conn, "SELECT * FROM transactions WHERE user_id='$user_id' AND MONTH(tanggal)='$bulan' AND YEAR(tanggal)='$tahun' ORDER BY tanggal DESC");
-    $transactions = [];
-    while($r = mysqli_fetch_assoc($trx_q)) { $transactions[] = $r; }
+    $stmt = mysqli_prepare($conn, "SELECT * FROM transactions WHERE user_id = ? ORDER BY tanggal DESC, id DESC");
+    mysqli_stmt_bind_param($stmt, "i", $user_id);
+    mysqli_stmt_execute($stmt);
+    $trxResult = mysqli_stmt_get_result($stmt);
 
-    echo json_encode([
+    $transactions = [];
+    while ($row = mysqli_fetch_assoc($trxResult)) {
+        $transactions[] = $row;
+    }
+    mysqli_stmt_close($stmt);
+
+    sendJson([
         "status" => "success",
         "summary" => ["income" => $total_income, "expense" => $total_expense, "saldo" => $saldo],
         "transactions" => $transactions
     ]);
 }
 
-// --- 4. SIMPAN TRANSAKSI ---
 elseif ($action === 'simpan') {
-    $data = json_decode(file_get_contents("php://input"), true);
-    $user_id = (int)$data['user_id'];
-    $tipe = mysqli_real_escape_string($conn, $data['tipe']);
-    $jumlah = (float)$data['jumlah'];
-    $deskripsi = mysqli_real_escape_string($conn, $data['deskripsi']);
-    $tanggal = mysqli_real_escape_string($conn, $data['tanggal']);
+    $data = getJsonInput();
+    $user_id = (int)($data['user_id'] ?? 0);
+    $tipe = strtolower(trim($data['tipe'] ?? ''));
+    $jumlah = (float)($data['jumlah'] ?? 0);
+    $deskripsi = trim($data['deskripsi'] ?? '');
+    $tanggal = trim($data['tanggal'] ?? '');
 
-    $query = "INSERT INTO transactions (user_id, tipe, jumlah, deskripsi, tanggal) VALUES ('$user_id', '$tipe', '$jumlah', '$deskripsi', '$tanggal')";
-    echo json_encode(["status" => mysqli_query($conn, $query) ? "success" : "error"]);
+    if ($user_id <= 0 || !in_array($tipe, ['income', 'expense'], true) || $jumlah <= 0 || $tanggal === '') {
+        sendJson(["status" => "error", "message" => "Data transaksi tidak valid."]);
+    }
+
+    $stmt = mysqli_prepare($conn, "INSERT INTO transactions (user_id, tipe, jumlah, deskripsi, tanggal) VALUES (?, ?, ?, ?, ?)");
+    if (!$stmt) {
+        sendJson(["status" => "error", "message" => "Gagal menyiapkan query."]);
+    }
+
+    mysqli_stmt_bind_param($stmt, "isdss", $user_id, $tipe, $jumlah, $deskripsi, $tanggal);
+    if (mysqli_stmt_execute($stmt)) {
+        mysqli_stmt_close($stmt);
+        sendJson(["status" => "success", "message" => "Transaksi tersimpan."]);
+    }
+
+    mysqli_stmt_close($stmt);
+    sendJson(["status" => "error", "message" => "Gagal menyimpan transaksi."]);
 }
 
-// --- 5. EXPORT DATA EXCEL ---
 elseif ($action === 'export') {
-    $user_id = $_GET['user_id'] ?? null;
-    $bulan = $_GET['bulan'] ?? date('m');
-    $tahun = $_GET['tahun'] ?? date('Y');
+    $user_id = (int)($_GET['user_id'] ?? 0);
+    if ($user_id <= 0) {
+        http_response_code(400);
+        echo 'Unauthorized';
+        exit;
+    }
 
-    header("Content-Type: application/vnd-ms-excel");
-    header("Content-Disposition: attachment; filename=Laporan_ZailTrack_" . $bulan . "_" . $tahun . ".xls");
-    
-    $query = "SELECT * FROM transactions WHERE user_id='$user_id' AND MONTH(tanggal)='$bulan' AND YEAR(tanggal)='$tahun' ORDER BY tanggal ASC";
-    $data = mysqli_query($conn, $query);
-    
-    // Tampilkan data ke struktur table Excel HTML seperti kode export kita sebelumnya
+    header("Content-Type: application/vnd.ms-excel; charset=utf-8");
+    header("Content-Disposition: attachment; filename=Laporan_ZailTrack.xls");
+
+    $stmt = mysqli_prepare($conn, "SELECT * FROM transactions WHERE user_id = ? ORDER BY tanggal ASC, id ASC");
+    mysqli_stmt_bind_param($stmt, "i", $user_id);
+    mysqli_stmt_execute($stmt);
+    $data = mysqli_stmt_get_result($stmt);
+
     echo "<table border='1'>
-            <tr style='background:#212529;color:white;'><th>Tanggal</th><th>Tipe</th><th>Jumlah</th><th>Deskripsi</th></tr>";
-    while($row = mysqli_fetch_assoc($data)) {
-        $tipe_text = $row['tipe'] == 'income' ? 'Pemasukan' : 'Pengeluaran';
+            <tr style='background:#111;color:white;'><th>Tanggal</th><th>Tipe</th><th>Jumlah (Rp)</th><th>Deskripsi</th></tr>";
+    while ($row = mysqli_fetch_assoc($data)) {
+        $t_txt = $row['tipe'] === 'income' ? 'Pemasukan' : 'Pengeluaran';
         echo "<tr>
                 <td>{$row['tanggal']}</td>
-                <td>{$tipe_text}</td>
-                <td style=\"mso-number-format:'\#\,\#\#0'; text-align:right;\" x:num='{$row['jumlah']}'>{$row['jumlah']}</td>
-                <td>".htmlspecialchars($row['deskripsi'])."</td>
+                <td>{$t_txt}</td>
+                <td style=\"mso-number-format:'\\#\\,\\#\\#0'; text-align:right;\" x:num='{$row['jumlah']}'>{$row['jumlah']}</td>
+                <td>" . htmlspecialchars($row['deskripsi']) . "</td>
               </tr>";
     }
     echo "</table>";
+}
+
+else {
+    sendJson(["status" => "error", "message" => "Aksi tidak valid."]);
 }
 ?>

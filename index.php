@@ -9,15 +9,15 @@
 </head>
 <body class="d-flex align-items-center justify-content-center">
 
-<div class="container p-3" style="max-width: 420px;">
+<div class="container p-3" style="max-width: 400px;">
     <div class="card card-custom p-4 fade-in">
-        <h2 class="text-center fw-bold mb-4">🖤 ZailTrack</h2>
+        <h3 class="text-center fw-bold mb-4">🖤 ZailTrack</h3>
         
         <div id="loginArea">
             <form id="loginForm">
                 <div class="mb-3">
                     <label class="form-label small text-muted">Username</label>
-                    <input type="text" class="form-control" id="logUser" required autocomplete="off">
+                    <input type="text" class="form-control" id="logUser" required>
                 </div>
                 <div class="mb-4">
                     <label class="form-label small text-muted">Password</label>
@@ -25,14 +25,14 @@
                 </div>
                 <button type="submit" class="btn btn-premium w-100 py-2">Sign In</button>
             </form>
-            <p class="text-center small text-muted mt-3 mb-0">Belum punya akun? <a href="#" onclick="switchForm()" class="text-white">Daftar</a></p>
+            <p class="text-center small text-muted mt-3 mb-0">Belum punya akun? <a href="#" onclick="switchForm()" class="text-white fw-semibold">Daftar</a></p>
         </div>
 
         <div id="registerArea" class="d-none">
             <form id="regForm">
                 <div class="mb-3">
                     <label class="form-label small text-muted">Username Baru</label>
-                    <input type="text" class="form-control" id="regUser" required autocomplete="off">
+                    <input type="text" class="form-control" id="regUser" required>
                 </div>
                 <div class="mb-4">
                     <label class="form-label small text-muted">Password</label>
@@ -40,7 +40,7 @@
                 </div>
                 <button type="submit" class="btn btn-premium w-100 py-2">Buat Akun</button>
             </form>
-            <p class="text-center small text-muted mt-3 mb-0">Sudah ada akun? <a href="#" onclick="switchForm()" class="text-white">Login</a></p>
+            <p class="text-center small text-muted mt-3 mb-0">Sudah punya akun? <a href="#" onclick="switchForm()" class="text-white">Login</a></p>
         </div>
     </div>
 </div>
