@@ -4,15 +4,22 @@
   "functions": {
     "api/**/*.php": {
       "runtime": "vercel-php@0.7.2"
+    },
+    "*.php": {
+      "runtime": "vercel-php@0.7.2"
     }
   },
   "routes": [
-    { "src": "/api/register", "dest": "/api/process.php?action=register" },
-    { "src": "/api/login", "dest": "/api/process.php?action=login" },
-    { "src": "/api/get_dashboard", "dest": "/api/process.php?action=get_dashboard" },
-    { "src": "/api/simpan", "dest": "/api/process.php?action=simpan" },
-    { "src": "/api/export", "dest": "/api/process.php?action=export" },
+    { "src": "/assets/(.*)", "dest": "/assets/$1" },
+    { "src": "/api/register", "dest": "/api/process.php?action=register", "methods": ["POST"] },
+    { "src": "/api/login", "dest": "/api/process.php?action=login", "methods": ["POST"] },
+    { "src": "/api/get_dashboard", "dest": "/api/process.php?action=get_dashboard", "methods": ["GET"] },
+    { "src": "/api/simpan", "dest": "/api/process.php?action=simpan", "methods": ["POST"] },
+    { "src": "/api/export", "dest": "/api/process.php?action=export", "methods": ["GET"] },
     { "src": "/dashboard", "dest": "/dashboard.php" },
-    { "src": "/index", "dest": "/index.php" }
+    { "src": "/index", "dest": "/index.php" },
+    { "src": "/", "dest": "/index.php" },
+    { "src": "/(.*)\\.php$", "dest": "/$1.php" },
+    { "src": "/(.*)", "dest": "/index.php" }
   ]
 }
