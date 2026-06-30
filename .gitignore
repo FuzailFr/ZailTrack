@@ -24,3 +24,5 @@ dist/
 
 # Cache
 *.cache
+.vercel
+.env*
