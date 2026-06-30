@@ -1,29 +1,30 @@
 # ZailTrack
 
-ZailTrack adalah aplikasi pencatat keuangan sederhana berbasis PHP, MySQL, dan Vanilla JavaScript yang dirancang untuk berjalan di Vercel dengan arsitektur serverless.
+ZailTrack adalah aplikasi pencatat keuangan personal berbasis Jamstack dengan frontend statis HTML, backend PHP serverless, dan MySQL eksternal.
 
 ## Fitur
 - Registrasi dan login pengguna
 - Dashboard ringkasan pemasukan, pengeluaran, dan saldo
 - Penyimpanan transaksi per user
 - Export data ke format Excel
-- UI dark mode yang responsif untuk mobile dan desktop
+- UI dark mode mobile-first yang ringan dan responsif
 
 ## Teknologi yang Digunakan
-- PHP Native
+- HTML statis
+- PHP Native (Serverless API)
 - MySQL
-- Vanilla JavaScript
+- Vanilla JavaScript (Fetch API)
 - Bootstrap 5
-- Vercel Serverless
+- Vercel
 
 ## Struktur Proyek
 - api/configure.php : koneksi database dan pembuatan tabel otomatis
-- api/process.php : logika API register, login, dashboard, simpan transaksi, dan export
+- api/process.php : endpoint API `?action=register`, `?action=login`, `?action=get_dashboard`, `?action=simpan`, `?action=export`
 - assets/css/style.css : styling UI
 - assets/js/app.js : logika frontend dan Fetch API
-- index.php : halaman login/daftar
-- dashboard.php : halaman dashboard utama
-- vercel.json : konfigurasi routing Vercel
+- index.html : halaman login/daftar statis
+- dashboard.html : halaman dashboard statis
+- .env.example : contoh file environment variable
 
 ## Cara Menjalankan Lokal
 1. Pastikan PHP dan MySQL sudah tersedia.
@@ -42,7 +43,7 @@ php -S localhost:8000
 5. Buka browser ke:
 
 ```text
-http://localhost:8000/
+http://localhost:8000/index.html
 ```
 
 ## Deploy ke Vercel
@@ -56,5 +57,8 @@ http://localhost:8000/
 4. Deploy.
 
 ## Catatan
-- Untuk Vercel, jangan gunakan localhost sebagai host database.
+- Frontend menggunakan file statis `index.html` dan `dashboard.html`.
+- Backend API adalah `api/process.php?action=...`.
+- Jika Vercel mendeteksi deployment statis dengan PHP serverless, file `vercel.json` tidak wajib.
+- Untuk Vercel, jangan gunakan `localhost` sebagai host database.
 - Saat pertama kali dijalankan, aplikasi akan otomatis membuat tabel yang dibutuhkan.

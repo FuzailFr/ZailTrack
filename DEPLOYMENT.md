@@ -70,7 +70,8 @@ https://zailtrack-xxxxx.vercel.app/
 
 ### Blank page / 500 error
 - Cek Vercel logs: buka project di Vercel, tab "Logs"
-- Pastikan vercel.json sudah benar
+- Pastikan frontend menggunakan `index.html` dan `dashboard.html`
+- Pastikan backend API tersedia di `api/process.php`
 - Pastikan file PHP tidak ada syntax error
 
 ### Tabel tidak terbuat otomatis

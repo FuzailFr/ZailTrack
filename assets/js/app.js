@@ -1,4 +1,4 @@
-const API_URL = "/api";
+const API_URL = "/api/process.php";
 
 function alertMessage(message) {
     window.alert(message);
@@ -28,7 +28,7 @@ async function authRegister(e) {
         return;
     }
 
-    const { data } = await requestJson(`${API_URL}/register`, {
+    const { data } = await requestJson(`${API_URL}?action=register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, password })
@@ -36,7 +36,7 @@ async function authRegister(e) {
 
     alertMessage(data.message || "Registrasi selesai.");
     if (data.status === "success") {
-        window.location.href = "/index";
+        window.location.href = "/index.html";
     }
 }
 
@@ -50,7 +50,7 @@ async function authLogin(e) {
         return;
     }
 
-    const { data } = await requestJson(`${API_URL}/login`, {
+    const { data } = await requestJson(`${API_URL}?action=login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, password })
@@ -59,7 +59,7 @@ async function authLogin(e) {
     if (data.status === "success") {
         localStorage.setItem("user_id", String(data.user_id));
         localStorage.setItem("username", data.username);
-        window.location.href = "/dashboard";
+        window.location.href = "/dashboard.html";
     } else {
         alertMessage(data.message || "Login gagal.");
     }
@@ -68,7 +68,7 @@ async function authLogin(e) {
 async function loadDashboardData() {
     const user_id = localStorage.getItem("user_id");
     if (!user_id) {
-        window.location.href = "/index";
+        window.location.href = "/index.html";
         return;
     }
 
@@ -77,7 +77,7 @@ async function loadDashboardData() {
         welcome.innerText = "⚡ " + (localStorage.getItem("username") || "Dashboard");
     }
 
-    const { data } = await requestJson(`${API_URL}/get_dashboard?user_id=${user_id}`);
+    const { data } = await requestJson(`${API_URL}?action=get_dashboard&user_id=${user_id}`);
     if (data.status !== "success") {
         alertMessage(data.message || "Gagal memuat data dashboard.");
         return;
@@ -119,7 +119,7 @@ async function simpanTransaksi(e) {
         return;
     }
 
-    const { data } = await requestJson(`${API_URL}/simpan`, {
+    const { data } = await requestJson(`${API_URL}?action=simpan`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ user_id, tipe, jumlah, tanggal, deskripsi })
@@ -138,13 +138,13 @@ async function simpanTransaksi(e) {
 function downloadExcel() {
     const user_id = localStorage.getItem("user_id");
     if (!user_id) {
-        window.location.href = "/index";
+        window.location.href = "/index.html";
         return;
     }
-    window.location.href = `${API_URL}/export?user_id=${user_id}`;
+    window.location.href = `${API_URL}?action=export&user_id=${user_id}`;
 }
 
 function logout() {
     localStorage.clear();
-    window.location.href = "/index";
+    window.location.href = "/index.html";
 }
