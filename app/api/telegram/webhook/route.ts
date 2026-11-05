@@ -72,40 +72,38 @@ function parseTransactionText(rawText: string): {
     tipe = "expense";
   }
 
-  // 2. Ekstrak Nominal Angka (Mendukung 50k, 1.5jt, 25rb, 150000, 100.000)
-  // Regex mencari angka dengan opsional suffix k, rb, ribu, jt, juta
-  const numberRegex = /(\d+(?:[.,]\d+)?)\s*(jt|juta|k|rb|ribu)?/i;
+  // 2. Ekstrak Nominal Angka (Mendukung 50k, 1.5jt, 25rb, 150000, 100.000, 1.000.000)
+  // Suffix (k, rb, ribu, jt, juta) wajib terisolasi atau diakhiri batas kata (?![a-zA-Z])
+  // sehingga kata seperti 'kopi' tidak dianggap sebagai suffix 'k'!
+  const numberRegex = /(\d+(?:[.,]\d+)*)(?:\s*(jt|juta|k|rb|ribu)(?![a-zA-Z]))?/i;
   const match = text.match(numberRegex);
 
   if (!match) return null;
 
-  const rawNumStr = match[1].replace(/,/g, ".");
-  let parsedAmount = parseFloat(rawNumStr);
+  const rawNumStr = match[1];
+  const suffix = (match[2] || "").toLowerCase();
+  let parsedAmount = 0;
+
+  if (suffix === "jt" || suffix === "juta") {
+    const decimalVal = parseFloat(rawNumStr.replace(/,/g, "."));
+    parsedAmount = Math.round(decimalVal * 1_000_000);
+  } else if (suffix === "k" || suffix === "rb" || suffix === "ribu") {
+    const decimalVal = parseFloat(rawNumStr.replace(/,/g, "."));
+    parsedAmount = Math.round(decimalVal * 1_000);
+  } else {
+    // Angka murni tanpa suffix, bersihkan format titik/koma ribuan: misal 50.000 -> 50000
+    const cleanPlain = rawNumStr.replace(/[^0-9]/g, "");
+    parsedAmount = parseInt(cleanPlain, 10);
+  }
 
   if (isNaN(parsedAmount) || parsedAmount <= 0) return null;
 
-  const suffix = (match[2] || "").toLowerCase();
-  if (suffix === "jt" || suffix === "juta") {
-    parsedAmount = Math.round(parsedAmount * 1_000_000);
-  } else if (suffix === "k" || suffix === "rb" || suffix === "ribu") {
-    parsedAmount = Math.round(parsedAmount * 1_000);
-  } else {
-    // Jika angka murni tanpa suffix, cek apakah titik/koma sebagai pemisah ribuan (contoh: 50.000)
-    const cleanPlain = match[0].replace(/[^0-9]/g, "");
-    const plainVal = parseInt(cleanPlain, 10);
-    if (!isNaN(plainVal) && plainVal > 0) {
-      parsedAmount = plainVal;
-    }
-  }
-
-  if (parsedAmount <= 0) return null;
-
-  // 3. Ekstrak Deskripsi (Hapus perintah, angka, dan tanda +/-)
+  // 3. Ekstrak Deskripsi (Hapus angka yang cocok, kata kunci awal, dan tanda +/-)
   let desc = text
-    .replace(match[0], "") // Hapus hanya angka nominal
-    .replace(/^\/?(masuk|keluar|income|expense)\s*/i, "")
+    .replace(match[0], "")
+    .replace(/^\/?(masuk|keluar|income|expense|beli|bayar|jajan)\s*/i, "")
     .replace(/^[+\-]\s*/, "")
-    .replace(/\s+/g, " ") // Rapikan spasi
+    .replace(/\s+/g, " ")
     .trim();
 
   if (!desc) {
