@@ -31,8 +31,14 @@ export async function initDbSchema() {
       id SERIAL PRIMARY KEY,
       username VARCHAR(100) NOT NULL UNIQUE,
       password VARCHAR(255) NOT NULL,
+      role VARCHAR(20) NOT NULL DEFAULT 'user',
       created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
     );
+  `;
+
+  // Migrasi kolom role jika tabel lama sudah terbuat
+  await sql`
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS role VARCHAR(20) NOT NULL DEFAULT 'user';
   `;
 
   // Tabel transactions

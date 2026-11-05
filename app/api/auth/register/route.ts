@@ -49,11 +49,11 @@ export async function POST(request: Request) {
     // Hash password dengan bcrypt salt 10
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Simpan user baru
+    // Simpan user baru (role default 'user')
     const insertResult = await sql`
-      INSERT INTO users (username, password)
-      VALUES (${username}, ${hashedPassword})
-      RETURNING id, username
+      INSERT INTO users (username, password, role)
+      VALUES (${username}, ${hashedPassword}, 'user')
+      RETURNING id, username, role
     `;
 
     const newUser = insertResult[0];
@@ -62,12 +62,13 @@ export async function POST(request: Request) {
     await setSessionCookie({
       userId: Number(newUser.id),
       username: String(newUser.username),
+      role: String(newUser.role || "user"),
     });
 
     return NextResponse.json({
       status: "success",
       message: "Akun berhasil dibuat.",
-      user: { id: newUser.id, username: newUser.username },
+      user: { id: newUser.id, username: newUser.username, role: newUser.role || "user" },
     });
   } catch (error: any) {
     console.error("Register error:", error);

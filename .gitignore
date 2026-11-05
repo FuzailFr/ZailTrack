@@ -26,3 +26,6 @@ next-env.d.ts
 
 # legacy backup (hanya lokal)
 _legacy_php/
+
+.vercel
+.env*

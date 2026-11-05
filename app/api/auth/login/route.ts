@@ -20,7 +20,7 @@ export async function POST(request: Request) {
     const sql = getDb();
 
     const users = await sql`
-      SELECT id, username, password FROM users 
+      SELECT id, username, password, role FROM users 
       WHERE LOWER(username) = LOWER(${username}) 
       LIMIT 1
     `;
@@ -42,16 +42,17 @@ export async function POST(request: Request) {
       );
     }
 
-    // Set HTTP-Only Cookie
+    // Set HTTP-Only Cookie with role
     await setSessionCookie({
       userId: Number(user.id),
       username: String(user.username),
+      role: String(user.role || "user"),
     });
 
     return NextResponse.json({
       status: "success",
       message: "Login berhasil.",
-      user: { id: user.id, username: user.username },
+      user: { id: user.id, username: user.username, role: user.role || "user" },
     });
   } catch (error: any) {
     console.error("Login error:", error);

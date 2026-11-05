@@ -13,6 +13,7 @@ function getSecretKey(): Uint8Array {
 export interface UserPayload {
   userId: number;
   username: string;
+  role: string;
 }
 
 // Generate JWT token 7 hari
@@ -33,6 +34,7 @@ export async function verifyToken(token: string): Promise<UserPayload | null> {
     return {
       userId: Number(payload.userId),
       username: String(payload.username),
+      role: String(payload.role || "user"),
     };
   } catch {
     return null;
