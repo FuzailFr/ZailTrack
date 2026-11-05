@@ -4,9 +4,13 @@ import { cookies } from "next/headers";
 const COOKIE_NAME = "zailtrack_session";
 
 function getSecretKey(): Uint8Array {
-  const secret =
-    process.env.JWT_SECRET ||
-    "zailtrack-fallback-development-secret-key-32chars-min";
+  const secret = process.env.JWT_SECRET;
+  if (!secret) {
+    if (process.env.NODE_ENV === "production") {
+      throw new Error("FATAL: JWT_SECRET environment variable is missing in production!");
+    }
+    return new TextEncoder().encode("zailtrack-dev-only-secret-key-32chars-min");
+  }
   return new TextEncoder().encode(secret);
 }
 

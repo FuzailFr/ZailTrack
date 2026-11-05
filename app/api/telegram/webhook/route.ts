@@ -1,12 +1,14 @@
 import { NextResponse } from "next/server";
 import { getDb, initDbSchema } from "@/lib/db";
 
-const TELEGRAM_BOT_TOKEN =
-  process.env.TELEGRAM_BOT_TOKEN ||
-  "9042171953:AAHLOk8nnT3XEXYvyDMaxiyQSEsRu8-_a2M";
+const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 
 // Helper kirim pesan balasan Telegram
 async function sendTelegramMessage(chatId: number | string, text: string) {
+  if (!TELEGRAM_BOT_TOKEN) {
+    console.error("TELEGRAM_BOT_TOKEN is not configured in environment variables");
+    return;
+  }
   try {
     await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
       method: "POST",

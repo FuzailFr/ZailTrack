@@ -153,6 +153,8 @@ export default function DashboardPage() {
   const [devAudit, setDevAudit] = useState<DevAuditItem[]>([]);
   const [loadingDev, setLoadingDev] = useState(false);
   const [devTab, setDevTab] = useState<"users" | "audit">("users");
+  const [userActionLoading, setUserActionLoading] = useState<number | null>(null);
+  const [userActionAlert, setUserActionAlert] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   // Format Mata Uang IDR
   const formatIDR = (amount: number) => {
@@ -230,6 +232,61 @@ export default function DashboardPage() {
       console.error("Gagal memuat data dev", err);
     } finally {
       setLoadingDev(false);
+    }
+  };
+
+  const handleToggleUserRole = async (targetUser: DevUserItem) => {
+    const nextRole = targetUser.role === "admin" ? "user" : "admin";
+    const confirmMsg =
+      nextRole === "admin"
+        ? `Jadikan @${targetUser.username} sebagai ADMIN / DEV? Pengguna akan memiliki akses penuh ke Developer Cockpit.`
+        : `Turunkan role @${targetUser.username} menjadi USER biasa?`;
+
+    if (!window.confirm(confirmMsg)) return;
+
+    setUserActionLoading(targetUser.id);
+    setUserActionAlert(null);
+    try {
+      const res = await fetch(`/api/dev/users/${targetUser.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ role: nextRole }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.message || "Gagal mengubah role pengguna.");
+      }
+      setUserActionAlert({ type: "success", text: data.message });
+      await fetchDevData();
+    } catch (err: any) {
+      setUserActionAlert({ type: "error", text: err.message || "Gagal mengubah role pengguna." });
+    } finally {
+      setUserActionLoading(null);
+    }
+  };
+
+  const handleDeleteUser = async (targetUser: DevUserItem) => {
+    const confirmMsg =
+      `⚠️ PERINGATAN KERAS:\n\nApakah Anda benar-benar yakin ingin menghapus akun @${targetUser.username}?\n\nSemua (${targetUser.total_transactions}) riwayat transaksi pengguna ini akan DIHAPUS PERMANEN dari database dan tidak dapat dipulihkan!`;
+
+    if (!window.confirm(confirmMsg)) return;
+
+    setUserActionLoading(targetUser.id);
+    setUserActionAlert(null);
+    try {
+      const res = await fetch(`/api/dev/users/${targetUser.id}`, {
+        method: "DELETE",
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.message || "Gagal menghapus pengguna.");
+      }
+      setUserActionAlert({ type: "success", text: data.message });
+      await fetchDevData();
+    } catch (err: any) {
+      setUserActionAlert({ type: "error", text: err.message || "Gagal menghapus pengguna." });
+    } finally {
+      setUserActionLoading(null);
     }
   };
 
@@ -538,6 +595,26 @@ export default function DashboardPage() {
               </div>
             </section>
 
+            {/* User Action Feedback Alert */}
+            {userActionAlert && (
+              <div
+                className={`p-3 rounded-lg text-xs font-mono border flex items-center justify-between animate-fadeIn ${
+                  userActionAlert.type === "success"
+                    ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/30"
+                    : "bg-rose-500/10 text-rose-500 border-rose-500/30"
+                }`}
+              >
+                <span>{userActionAlert.text}</span>
+                <button
+                  type="button"
+                  onClick={() => setUserActionAlert(null)}
+                  className="text-xs hover:opacity-75 cursor-pointer ml-3 font-bold"
+                >
+                  ✕
+                </button>
+              </div>
+            )}
+
             {/* Dev Tabs */}
             <div className="technical-card rounded-xl overflow-hidden">
               <div className="p-3 border-b border-[var(--border)] flex items-center gap-2">
@@ -575,6 +652,7 @@ export default function DashboardPage() {
                         <th className="py-3 px-4">Role</th>
                         <th className="py-3 px-4">Transaksi Dicatat</th>
                         <th className="py-3 px-4">Terdaftar Sejak</th>
+                        <th className="py-3 px-4 text-right">Aksi Manajemen</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-[var(--border-subtle)]">
@@ -598,6 +676,42 @@ export default function DashboardPage() {
                           <td className="py-3 px-4">{u.total_transactions} transaksi</td>
                           <td className="py-3 px-4 text-[var(--text-muted)]">
                             {new Date(u.created_at).toLocaleString("id-ID")}
+                          </td>
+                          <td className="py-3 px-4 text-right whitespace-nowrap">
+                            {u.id === user?.id ? (
+                              <span className="text-[10px] text-[var(--text-muted)] italic font-sans">
+                                (Akun Anda)
+                              </span>
+                            ) : (
+                              <div className="inline-flex items-center gap-1.5 justify-end">
+                                <button
+                                  type="button"
+                                  disabled={userActionLoading === u.id}
+                                  onClick={() => handleToggleUserRole(u)}
+                                  className={`px-2 py-1 text-[10px] font-sans rounded transition-colors cursor-pointer border ${
+                                    u.role === "admin"
+                                      ? "bg-amber-500/10 text-amber-500 border-amber-500/30 hover:bg-amber-500/20"
+                                      : "bg-blue-500/10 text-blue-500 border-blue-500/30 hover:bg-blue-500/20"
+                                  } disabled:opacity-50`}
+                                  title={u.role === "admin" ? "Turunkan ke User biasa" : "Jadikan Admin / Developer"}
+                                >
+                                  {userActionLoading === u.id
+                                    ? "..."
+                                    : u.role === "admin"
+                                    ? "Set sbg User"
+                                    : "Set sbg Admin"}
+                                </button>
+                                <button
+                                  type="button"
+                                  disabled={userActionLoading === u.id}
+                                  onClick={() => handleDeleteUser(u)}
+                                  className="px-2 py-1 text-[10px] font-sans rounded bg-rose-500/10 text-rose-500 border border-rose-500/30 hover:bg-rose-500/20 transition-colors cursor-pointer disabled:opacity-50"
+                                  title="Hapus akun pengguna dan seluruh transaksinya"
+                                >
+                                  {userActionLoading === u.id ? "..." : "Hapus Akun"}
+                                </button>
+                              </div>
+                            )}
                           </td>
                         </tr>
                       ))}
