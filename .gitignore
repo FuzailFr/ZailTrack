@@ -1,28 +1,28 @@
-# Environment files
-.env
-.env.local
-.env.*.local
+# dependencies
+/node_modules
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
 
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
+# next.js
+/.next/
+/out/
+/build
 
-# OS
-.DS_Store
-Thumbs.db
-
-# Logs
-*.log
-
-# Build files
-.vercel/
-node_modules/
-dist/
-
-# Cache
-*.cache
-.vercel
+# env files (rahasia jangan sampai ter-commit)
 .env*
+!.env.example
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# legacy backup (hanya lokal)
+_legacy_php/

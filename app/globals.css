@@ -1,0 +1,80 @@
+@import "tailwindcss";
+
+:root {
+  --font-sans: "Bricolage Grotesque", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "Space Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+[data-theme="dark"] {
+  /* Slate-Charcoal Technical Archival Palette */
+  --bg: #0b0d11;
+  --bg-secondary: #12151c;
+  --surface: #181c25;
+  --surface-hover: #1f2430;
+  --border: #262c38;
+  --border-subtle: #1c212b;
+  --text-primary: #f3f4f6;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  --accent: #38bdf8;
+  --accent-muted: rgba(56, 189, 248, 0.12);
+  --income: #34d399;
+  --income-bg: rgba(52, 211, 153, 0.1);
+  --expense: #fb7185;
+  --expense-bg: rgba(251, 113, 133, 0.1);
+}
+
+[data-theme="light"] {
+  /* Paper & Lead Technical Archival Palette */
+  --bg: #fafaf9;
+  --bg-secondary: #f4f4f5;
+  --surface: #ffffff;
+  --surface-hover: #f8fafc;
+  --border: #e2e8f0;
+  --border-subtle: #edf2f7;
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #64748b;
+  --accent: #0284c7;
+  --accent-muted: rgba(2, 132, 199, 0.08);
+  --income: #059669;
+  --income-bg: rgba(5, 150, 105, 0.08);
+  --expense: #e11d48;
+  --expense-bg: rgba(225, 29, 72, 0.08);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  letter-spacing: -0.015em;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.font-mono {
+  font-family: var(--font-mono);
+}
+
+/* Custom hairline borders and cards */
+.technical-card {
+  background-color: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.03);
+}
+
+.technical-input {
+  background-color: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.technical-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-muted);
+}
