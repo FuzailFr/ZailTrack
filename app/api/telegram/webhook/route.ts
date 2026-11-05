@@ -100,15 +100,13 @@ function parseTransactionText(rawText: string): {
 
   if (parsedAmount <= 0) return null;
 
-  // 3. Ekstrak Deskripsi (Hapus perintah, angka, dan kata kunci tipe)
+  // 3. Ekstrak Deskripsi (Hapus perintah, angka, dan tanda +/-)
   let desc = text
-    .replace(match[0], "") // Hapus angka nominal
-    .replace(/^\/?(masuk|keluar|income|expense)\s+/i, "")
+    .replace(match[0], "") // Hapus hanya angka nominal
+    .replace(/^\/?(masuk|keluar|income|expense)\s*/i, "")
     .replace(/^[+\-]\s*/, "")
+    .replace(/\s+/g, " ") // Rapikan spasi
     .trim();
-
-  // Hapus kata sambung pembuka jika ada
-  desc = desc.replace(/^(untuk|buat|ke|dari)\s+/i, "").trim();
 
   if (!desc) {
     desc = tipe === "income" ? "Pemasukan Telegram" : "Pengeluaran Telegram";
