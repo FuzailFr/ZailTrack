@@ -137,7 +137,189 @@ export async function POST(request: Request) {
     await initDbSchema();
     const sql = getDb();
 
-    // 1. Handle Command: /start <link_code> (Otorisasi & Sambungkan Akun)
+    const lowerCmd = rawText.toLowerCase().split(" ")[0].split("@")[0];
+
+    // ==============================================================
+    // COMMAND 1: /help & /bantuan
+    // ==============================================================
+    if (lowerCmd === "/help" || lowerCmd === "/bantuan") {
+      await sendTelegramMessage(
+        chatId,
+        `📖 <b>Pusat Bantuan ZailTrack Bot</b>\n\n` +
+        `Bot ini mencatat transaksi keuangan secara instan & tersinkronisasi ke web dashboard.\n\n` +
+        `<b>Daftar Perintah:</b>\n` +
+        `• /saldo — Cek total pemasukan, pengeluaran & saldo bulan ini\n` +
+        `• /terakhir — Lihat 5 catatan transaksi terakhir Anda\n` +
+        `• /status — Cek status server web & latensi database\n` +
+        `• /acc — Cek informasi akun & status keamanan\n` +
+        `• /help — Tampilkan menu panduan ini\n\n` +
+        `<b>Contoh Cara Catat Cepat:</b>\n` +
+        `Cukup ketik pesan wajar tanpa garis miring:\n` +
+        `• <code>keluar 50000 kopi kenangan</code>\n` +
+        `• <code>beli bensin 35k</code>\n` +
+        `• <code>masuk 1.5jt freelance</code>\n` +
+        `• <code>+100000 dari bapak</code>\n` +
+        `• <code>-25rb jajan</code>\n\n` +
+        `🌐 <i>Dashboard web: https://zail-track.vercel.app/dashboard</i>`
+      );
+      return NextResponse.json({ ok: true });
+    }
+
+    // ==============================================================
+    // COMMAND 2: /status (Cek status kesehatan web & database)
+    // ==============================================================
+    if (lowerCmd === "/status") {
+      const startPing = performance.now();
+      await sql`SELECT 1 as ping`;
+      const latency = Math.round(performance.now() - startPing);
+
+      await sendTelegramMessage(
+        chatId,
+        `🟢 <b>Status Sistem ZailTrack</b>\n\n` +
+        `• <b>Server Web:</b> Online (Vercel Edge Global)\n` +
+        `• <b>Database:</b> Terhubung (Neon Serverless PostgreSQL)\n` +
+        `• <b>Latensi Query:</b> ${latency} ms\n` +
+        `• <b>Protokol:</b> HTTPS / TLS 1.3\n` +
+        `• <b>Webhook:</b> Aktif & Realtime\n\n` +
+        `Semua layanan beroperasi lancar dan siap digunakan.`
+      );
+      return NextResponse.json({ ok: true });
+    }
+
+    // ==============================================================
+    // COMMAND 3: /acc & /akun (Cek informasi akun pengguna)
+    // ==============================================================
+    if (lowerCmd === "/acc" || lowerCmd === "/akun") {
+      const linked = await sql`
+        SELECT id, username, role, created_at, telegram_chat_id 
+        FROM users WHERE telegram_chat_id = ${chatId} LIMIT 1
+      `;
+
+      if (linked.length === 0) {
+        await sendTelegramMessage(
+          chatId,
+          `⚠️ <b>Akun Telegram Anda belum terhubung ke ZailTrack.</b>\n\n` +
+          `Silakan buka https://zail-track.vercel.app/dashboard lalu klik tombol <b>Telegram Bot</b> untuk menghubungkan akun.`
+        );
+        return NextResponse.json({ ok: true });
+      }
+
+      const u = linked[0];
+      const joinedDate = new Date(u.created_at).toLocaleDateString("id-ID", {
+        day: "numeric",
+        month: "long",
+        year: "numeric"
+      });
+
+      await sendTelegramMessage(
+        chatId,
+        `👤 <b>Informasi Akun ZailTrack</b>\n\n` +
+        `• <b>User ID:</b> #${u.id}\n` +
+        `• <b>Username:</b> <code>${u.username}</code>\n` +
+        `• <b>Role:</b> ${u.role === "admin" ? "ADMIN / DEV" : "USER"}\n` +
+        `• <b>Chat ID:</b> <code>${chatId}</code>\n` +
+        `• <b>Terdaftar Sejak:</b> ${joinedDate}\n` +
+        `• <b>Password:</b> Terproteksi Enkripsi (Bcrypt Salt 10)\n\n` +
+        `<i>Catatan Keamanan: Password Anda disimpan menggunakan enkripsi satu arah (hash) dan tidak dapat dilihat oleh siapapun. Jika Anda lupa password, Anda dapat me-reset akun melalui Mode Dev di dashboard web.</i>`
+      );
+      return NextResponse.json({ ok: true });
+    }
+
+    // ==============================================================
+    // COMMAND 4: /saldo (Cek kas & saldo bulan berjalan)
+    // ==============================================================
+    if (lowerCmd === "/saldo") {
+      const linked = await sql`
+        SELECT id, username FROM users WHERE telegram_chat_id = ${chatId} LIMIT 1
+      `;
+
+      if (linked.length === 0) {
+        await sendTelegramMessage(
+          chatId,
+          `⚠️ Akun Telegram belum terhubung ke ZailTrack.\nBuka https://zail-track.vercel.app/dashboard untuk menghubungkan.`
+        );
+        return NextResponse.json({ ok: true });
+      }
+
+      const userId = linked[0].id;
+      const now = new Date();
+      const currentMonth = now.getMonth() + 1;
+      const currentYear = now.getFullYear();
+      const monthNames = [
+        "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+        "Juli", "Agustus", "September", "Oktober", "November", "Desember"
+      ];
+
+      const sumRes = await sql`
+        SELECT 
+          COALESCE(SUM(CASE WHEN tipe = 'income' THEN jumlah ELSE 0 END), 0) AS total_income,
+          COALESCE(SUM(CASE WHEN tipe = 'expense' THEN jumlah ELSE 0 END), 0) AS total_expense
+        FROM transactions
+        WHERE user_id = ${userId}
+          AND EXTRACT(MONTH FROM tanggal) = ${currentMonth}
+          AND EXTRACT(YEAR FROM tanggal) = ${currentYear}
+      `;
+
+      const inc = Number(sumRes[0]?.total_income || 0);
+      const exp = Number(sumRes[0]?.total_expense || 0);
+      const net = inc - exp;
+
+      await sendTelegramMessage(
+        chatId,
+        `💰 <b>Ringkasan Saldo Bulan ${monthNames[currentMonth - 1]} ${currentYear}</b>\n\n` +
+        `🟢 <b>Pemasukan:</b> ${formatRupiah(inc)}\n` +
+        `🔴 <b>Pengeluaran:</b> ${formatRupiah(exp)}\n` +
+        `💼 <b>Saldo Bersih:</b> ${formatRupiah(net)}\n\n` +
+        `🌐 <i>Rincian lengkap: https://zail-track.vercel.app/dashboard</i>`
+      );
+      return NextResponse.json({ ok: true });
+    }
+
+    // ==============================================================
+    // COMMAND 5: /terakhir & /riwayat (Lihat 5 transaksi terakhir)
+    // ==============================================================
+    if (lowerCmd === "/terakhir" || lowerCmd === "/riwayat") {
+      const linked = await sql`
+        SELECT id, username FROM users WHERE telegram_chat_id = ${chatId} LIMIT 1
+      `;
+
+      if (linked.length === 0) {
+        await sendTelegramMessage(chatId, `⚠️ Akun Telegram belum terhubung.`);
+        return NextResponse.json({ ok: true });
+      }
+
+      const userId = linked[0].id;
+      const recentTx = await sql`
+        SELECT id, tipe, jumlah, deskripsi, TO_CHAR(tanggal, 'DD/MM/YYYY') AS tanggal_str
+        FROM transactions
+        WHERE user_id = ${userId}
+        ORDER BY tanggal DESC, id DESC
+        LIMIT 5
+      `;
+
+      if (recentTx.length === 0) {
+        await sendTelegramMessage(
+          chatId,
+          `📋 <i>Belum ada riwayat transaksi yang dicatat.</i>\n\nKetik pesan baru, contoh: <code>keluar 50000 kopi kenangan</code>`
+        );
+        return NextResponse.json({ ok: true });
+      }
+
+      let textMsg = `📋 <b>5 Transaksi Terakhir Anda:</b>\n\n`;
+      recentTx.forEach((tx, idx) => {
+        const icon = tx.tipe === "income" ? "🟢" : "🔴";
+        const sign = tx.tipe === "income" ? "+" : "-";
+        textMsg += `${idx + 1}. ${icon} <b>${sign}${formatRupiah(Number(tx.jumlah))}</b> — ${tx.deskripsi} <i>(${tx.tanggal_str})</i>\n`;
+      });
+      textMsg += `\n🌐 <i>Dashboard: https://zail-track.vercel.app/dashboard</i>`;
+
+      await sendTelegramMessage(chatId, textMsg);
+      return NextResponse.json({ ok: true });
+    }
+
+    // ==============================================================
+    // COMMAND 6: /start <link_code> (Otorisasi & Sambungkan Akun)
+    // ==============================================================
     if (rawText.startsWith("/start")) {
       const parts = rawText.split(" ");
       const linkCode = parts[1]?.trim();

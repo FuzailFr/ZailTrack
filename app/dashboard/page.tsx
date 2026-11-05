@@ -30,6 +30,7 @@ import {
   Bot,
   Send,
   Unlink,
+  Download,
 } from "lucide-react";
 import ThemeToggle from "@/components/ThemeToggle";
 
@@ -456,41 +457,57 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col p-4 sm:p-8">
+    <div className="min-h-screen flex flex-col p-3.5 sm:p-8 pb-32 sm:pb-16">
       {/* Top Header */}
-      <header className="max-w-6xl w-full mx-auto pb-6 border-b border-[var(--border)] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded border border-[var(--border)] bg-[var(--surface)] flex items-center justify-center text-sm font-mono font-bold text-[var(--accent)] shadow-sm">
-            ZT
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-lg font-bold tracking-tight">ZailTrack</h1>
-              <span className="text-[10px] font-mono px-1.5 py-0.5 rounded border border-[var(--border)] bg-[var(--surface)] text-[var(--text-muted)]">
-                v2.0
-              </span>
-              {user?.role === "admin" && (
-                <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-500 border border-amber-500/30 flex items-center gap-1">
-                  <ShieldCheck size={11} /> DEV / ADMIN
+      <header className="max-w-6xl w-full mx-auto pb-5 border-b border-[var(--border)] flex flex-col gap-3.5">
+        {/* Row 1: Logo & Title + Actions (Theme & Logout) */}
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5 sm:gap-3">
+            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg border border-[var(--border)] bg-[var(--surface)] flex items-center justify-center text-sm font-mono font-bold text-[var(--accent)] shadow-xs">
+              ZT
+            </div>
+            <div>
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <h1 className="text-base sm:text-lg font-bold tracking-tight">ZailTrack</h1>
+                <span className="text-[10px] font-mono px-1.5 py-0.5 rounded border border-[var(--border)] bg-[var(--surface)] text-[var(--text-muted)]">
+                  v2.0
                 </span>
-              )}
+                {user?.role === "admin" && (
+                  <span className="inline-flex text-[9px] sm:text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-500 border border-amber-500/30 items-center gap-1">
+                    <ShieldCheck size={10} /> ADMIN
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-1.5 text-[11px] sm:text-xs text-[var(--text-muted)] font-mono mt-0.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
+                <span>USER // {user?.username}</span>
+              </div>
             </div>
-            <div className="flex items-center gap-2 text-xs text-[var(--text-muted)] font-mono mt-0.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
-              <span>USER // {user?.username}</span>
-            </div>
+          </div>
+
+          {/* Right: Theme Toggle & Logout */}
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
+            <button
+              onClick={handleLogout}
+              type="button"
+              className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-md border border-[var(--border)] bg-[var(--surface)] text-xs font-mono text-[var(--text-secondary)] hover:text-rose-500 hover:border-rose-500/30 transition-colors cursor-pointer"
+              title="Keluar dari sesi"
+            >
+              <LogOut size={13} />
+              <span className="hidden sm:inline">Keluar</span>
+            </button>
           </div>
         </div>
 
-        {/* Header Right Actions */}
-        <div className="flex flex-wrap items-center gap-3">
-          {/* Switcher Mode: Khusus Akun Admin/Dev */}
-          {user?.role === "admin" && (
-            <div className="flex items-center p-0.5 rounded-lg border border-[var(--border)] bg-[var(--surface)] text-xs font-mono">
+        {/* Row 2: Mode Switcher (Khusus Admin) */}
+        {user?.role === "admin" && (
+          <div className="flex items-center justify-between sm:justify-end pt-1">
+            <div className="w-full sm:w-auto flex items-center p-0.5 rounded-lg border border-[var(--border)] bg-[var(--surface)] text-xs font-mono">
               <button
                 type="button"
                 onClick={() => setActiveView("user")}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md transition-colors cursor-pointer ${
+                className={`flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md transition-colors cursor-pointer ${
                   activeView === "user"
                     ? "bg-[var(--text-primary)] text-[var(--bg)] font-bold shadow-xs"
                     : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"
@@ -502,7 +519,7 @@ export default function DashboardPage() {
               <button
                 type="button"
                 onClick={() => setActiveView("dev")}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md transition-colors cursor-pointer ${
+                className={`flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md transition-colors cursor-pointer ${
                   activeView === "dev"
                     ? "bg-amber-500 text-black font-bold shadow-xs"
                     : "text-[var(--text-muted)] hover:text-amber-500"
@@ -512,18 +529,8 @@ export default function DashboardPage() {
                 <span>Mode Dev</span>
               </button>
             </div>
-          )}
-
-          <ThemeToggle />
-          <button
-            onClick={handleLogout}
-            type="button"
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-[var(--border)] bg-[var(--surface)] text-xs font-mono text-[var(--text-secondary)] hover:text-rose-500 hover:border-rose-500/30 transition-colors cursor-pointer"
-          >
-            <LogOut size={13} />
-            <span>Keluar</span>
-          </button>
-        </div>
+          </div>
+        )}
       </header>
 
       {/* Main Workspace */}
@@ -834,89 +841,163 @@ export default function DashboardPage() {
             </section>
 
             {/* Actions & Filters Bar */}
-            <section className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 p-4 rounded-xl technical-card">
+            <section className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3.5 p-3.5 sm:p-4 rounded-xl technical-card">
               {/* Filters */}
-              <div className="flex flex-wrap items-center gap-3">
-                <div className="flex items-center gap-2 text-xs font-mono text-[var(--text-secondary)]">
-                  <Filter size={14} />
-                  <span>Filter Periode:</span>
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                <div className="flex items-center gap-1.5 text-xs font-mono text-[var(--text-secondary)]">
+                  <Filter size={13} />
+                  <span>Periode:</span>
                 </div>
 
-                {/* Select Month */}
-                <select
-                  value={selectedMonth}
-                  onChange={(e) => setSelectedMonth(e.target.value)}
-                  className="technical-input px-3 py-1.5 rounded-md text-xs font-mono cursor-pointer"
-                >
-                  {MONTHS.map((m) => (
-                    <option key={m.value} value={m.value}>
-                      {m.label}
-                    </option>
-                  ))}
-                </select>
+                <div className="grid grid-cols-2 sm:flex sm:items-center gap-2">
+                  {/* Select Month */}
+                  <select
+                    value={selectedMonth}
+                    onChange={(e) => setSelectedMonth(e.target.value)}
+                    className="technical-input px-2.5 py-1.5 rounded-md text-xs font-mono cursor-pointer w-full sm:w-auto"
+                  >
+                    {MONTHS.map((m) => (
+                      <option key={m.value} value={m.value}>
+                        {m.label}
+                      </option>
+                    ))}
+                  </select>
 
-                {/* Select Year */}
-                <select
-                  value={selectedYear}
-                  onChange={(e) => setSelectedYear(e.target.value)}
-                  className="technical-input px-3 py-1.5 rounded-md text-xs font-mono cursor-pointer"
-                >
-                  <option value="all">Semua Tahun</option>
-                  <option value="2027">2027</option>
-                  <option value="2026">2026</option>
-                  <option value="2025">2025</option>
-                  <option value="2024">2024</option>
-                </select>
+                  {/* Select Year */}
+                  <select
+                    value={selectedYear}
+                    onChange={(e) => setSelectedYear(e.target.value)}
+                    className="technical-input px-2.5 py-1.5 rounded-md text-xs font-mono cursor-pointer w-full sm:w-auto"
+                  >
+                    <option value="all">Semua Tahun</option>
+                    <option value="2027">2027</option>
+                    <option value="2026">2026</option>
+                    <option value="2025">2025</option>
+                    <option value="2024">2024</option>
+                  </select>
+                </div>
               </div>
 
               {/* Action Buttons: Telegram Bot, Google Sheets, & Tambah Transaksi */}
-              <div className="flex flex-wrap items-center gap-2.5">
-                {/* Tombol Telegram Bot */}
-                <button
-                  onClick={handleOpenTelegramModal}
-                  type="button"
-                  className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-3.5 py-2 rounded-md border border-sky-500/30 bg-sky-500/10 text-xs font-mono font-semibold text-sky-500 hover:bg-sky-500/20 transition-colors cursor-pointer shadow-xs"
-                  title="Hubungkan akun Telegram untuk mencatat transaksi kilat tanpa buka web"
-                >
-                  <Bot size={15} className="text-sky-500 shrink-0" />
-                  <span>Telegram Bot</span>
-                </button>
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2 w-full lg:w-auto">
+                <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full sm:w-auto">
+                  {/* Tombol Telegram Bot */}
+                  <button
+                    onClick={handleOpenTelegramModal}
+                    type="button"
+                    className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-md border border-sky-500/30 bg-sky-500/10 text-xs font-mono font-semibold text-sky-500 hover:bg-sky-500/20 transition-colors cursor-pointer shadow-xs whitespace-nowrap"
+                    title="Hubungkan akun Telegram untuk mencatat transaksi kilat tanpa buka web"
+                  >
+                    <Bot size={14} className="text-sky-500 shrink-0" />
+                    <span>Telegram Bot</span>
+                  </button>
 
-                {/* Tombol Google Sheets */}
-                <button
-                  onClick={handleOpenSheetsModal}
-                  type="button"
-                  className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-3.5 py-2 rounded-md border border-emerald-500/30 bg-emerald-500/10 text-xs font-mono font-semibold text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 transition-colors cursor-pointer shadow-xs"
-                  title="Hubungkan seluruh data secara realtime ke Google Spreadsheets"
-                >
-                  <FileSpreadsheet size={15} className="text-emerald-500 shrink-0" />
-                  <span>Google Sheets</span>
-                </button>
+                  {/* Tombol Google Sheets */}
+                  <button
+                    onClick={handleOpenSheetsModal}
+                    type="button"
+                    className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-md border border-emerald-500/30 bg-emerald-500/10 text-xs font-mono font-semibold text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 transition-colors cursor-pointer shadow-xs whitespace-nowrap"
+                    title="Hubungkan seluruh data secara realtime ke Google Spreadsheets"
+                  >
+                    <FileSpreadsheet size={14} className="text-emerald-500 shrink-0" />
+                    <span>Google Sheets</span>
+                  </button>
+                </div>
 
-                {/* Tombol Tambah Transaksi Manual */}
+                {/* Tombol Tambah Transaksi Manual (Prominent on Mobile) */}
                 <button
                   onClick={() => setIsModalOpen(true)}
                   type="button"
-                  className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-md bg-[var(--text-primary)] text-[var(--bg)] text-xs font-medium hover:opacity-90 transition-opacity cursor-pointer shadow-sm"
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-md bg-[var(--text-primary)] text-[var(--bg)] text-xs font-mono font-bold hover:opacity-90 transition-opacity cursor-pointer shadow-xs whitespace-nowrap"
                 >
-                  <Plus size={15} />
-                  <span>Tambah Transaksi</span>
+                  <Plus size={14} />
+                  <span>+ Tambah Transaksi</span>
                 </button>
               </div>
             </section>
 
-            {/* Transactions Table Ledger */}
+            {/* Transactions Ledger */}
             <section className="technical-card rounded-xl overflow-hidden">
-              <div className="p-4 border-b border-[var(--border)] flex items-center justify-between">
+              <div className="p-3.5 sm:p-4 border-b border-[var(--border)] flex items-center justify-between">
                 <div>
                   <h2 className="text-sm font-semibold tracking-tight">Ledger Transaksi Pribadi</h2>
-                  <p className="text-[11px] font-mono text-[var(--text-muted)]">
+                  <p className="text-[10px] sm:text-[11px] font-mono text-[var(--text-muted)]">
                     Daftar pembukuan terverifikasi ({transactions.length} entri ditemukan)
                   </p>
                 </div>
+                <button
+                  onClick={handleExportCSV}
+                  type="button"
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-mono rounded border border-[var(--border)] bg-[var(--surface)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
+                  title="Unduh seluruh data dalam format CSV"
+                >
+                  <Download size={12} />
+                  <span className="hidden sm:inline">Export CSV</span>
+                </button>
               </div>
 
-              <div className="overflow-x-auto">
+              {/* TAMPILAN MOBILE: Card List (< 640px) */}
+              <div className="block sm:hidden divide-y divide-[var(--border-subtle)]">
+                {loading ? (
+                  <div className="p-8 text-center text-xs font-mono text-[var(--text-muted)] flex flex-col items-center gap-2">
+                    <div className="w-5 h-5 border-2 border-[var(--accent)] border-t-transparent rounded-full animate-spin" />
+                    <span>Memuat transaksi...</span>
+                  </div>
+                ) : transactions.length === 0 ? (
+                  <div className="p-8 text-center text-xs font-mono text-[var(--text-muted)] space-y-2">
+                    <Calendar size={24} className="mx-auto opacity-30" />
+                    <p className="font-semibold text-[var(--text-primary)]">Belum ada transaksi</p>
+                    <p className="text-[11px]">Ketik chat di Telegram atau klik Tambah Transaksi.</p>
+                  </div>
+                ) : (
+                  transactions.map((t) => (
+                    <div key={t.id} className="p-3.5 space-y-2 hover:bg-[var(--surface-hover)] transition-colors">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="space-y-1 flex-1 min-w-0">
+                          <p className="font-sans text-sm font-medium text-[var(--text-primary)] leading-snug break-words">
+                            {t.deskripsi}
+                          </p>
+                          <div className="flex items-center gap-2 text-[10px] font-mono text-[var(--text-muted)]">
+                            <span>{t.tanggal}</span>
+                            <span>•</span>
+                            <span
+                              className={`px-1.5 py-0.5 rounded font-semibold ${
+                                t.tipe === "income"
+                                  ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                                  : "bg-rose-500/10 text-rose-600 dark:text-rose-400"
+                              }`}
+                            >
+                              {t.tipe === "income" ? "PEMASUKAN" : "PENGELUARAN"}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <div
+                            className={`font-mono font-bold text-sm ${
+                              t.tipe === "income"
+                                ? "text-emerald-600 dark:text-emerald-400"
+                                : "text-rose-600 dark:text-rose-400"
+                            }`}
+                          >
+                            {t.tipe === "income" ? `+ ${formatIDR(t.jumlah)}` : `- ${formatIDR(t.jumlah)}`}
+                          </div>
+                          <button
+                            onClick={() => handleDelete(t.id)}
+                            disabled={deletingId === t.id}
+                            className="mt-1.5 text-[11px] font-mono text-[var(--text-muted)] hover:text-rose-500 inline-flex items-center gap-1 cursor-pointer disabled:opacity-40"
+                          >
+                            <Trash2 size={12} />
+                            <span>Hapus</span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              {/* TAMPILAN DESKTOP: Table (>= 640px) */}
+              <div className="hidden sm:block overflow-x-auto">
                 <table className="w-full text-left text-xs">
                   <thead className="bg-[var(--bg-secondary)] border-b border-[var(--border)] text-[var(--text-muted)] font-mono uppercase tracking-wider text-[10px]">
                     <tr>
