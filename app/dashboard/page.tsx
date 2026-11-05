@@ -31,6 +31,10 @@ import {
   Send,
   Unlink,
   Download,
+  Search,
+  Pencil,
+  KeyRound,
+  BarChart3,
 } from "lucide-react";
 import ThemeToggle from "@/components/ThemeToggle";
 
@@ -124,6 +128,9 @@ export default function DashboardPage() {
   const [selectedMonth, setSelectedMonth] = useState<string>(currentMonth);
   const [selectedYear, setSelectedYear] = useState<string>(currentYear);
 
+  // Search Query
+  const [searchQuery, setSearchQuery] = useState("");
+
   // Modal State: Tambah Transaksi
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [formTipe, setFormTipe] = useState<"income" | "expense">("expense");
@@ -135,6 +142,24 @@ export default function DashboardPage() {
   const [submitting, setSubmitting] = useState(false);
   const [modalError, setModalError] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
+
+  // Modal State: Edit Transaksi
+  const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
+  const [editTipe, setEditTipe] = useState<"income" | "expense">("expense");
+  const [editJumlah, setEditJumlah] = useState("");
+  const [editDeskripsi, setEditDeskripsi] = useState("");
+  const [editTanggal, setEditTanggal] = useState("");
+  const [editSubmitting, setEditSubmitting] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
+
+  // Modal State: Ganti Password
+  const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
+  const [oldPassword, setOldPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordSubmitting, setPasswordSubmitting] = useState(false);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [passwordSuccess, setPasswordSuccess] = useState<string | null>(null);
 
   // Modal State: Google Sheets Realtime
   const [isSheetsModalOpen, setIsSheetsModalOpen] = useState(false);
@@ -435,6 +460,131 @@ export default function DashboardPage() {
     }
   };
 
+  // Handle Edit Modal
+  const handleOpenEditModal = (t: Transaction) => {
+    setEditingTransaction(t);
+    setEditTipe(t.tipe);
+    setEditJumlah(new Intl.NumberFormat("id-ID").format(t.jumlah));
+    setEditDeskripsi(t.deskripsi === "-" ? "" : t.deskripsi);
+    setEditTanggal(t.tanggal);
+    setEditError(null);
+  };
+
+  const handleSaveEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingTransaction) return;
+
+    const parsedJumlah = parseFloat(editJumlah.replace(/[^0-9]/g, ""));
+    if (isNaN(parsedJumlah) || parsedJumlah <= 0) {
+      setEditError("Nominal transaksi harus berupa angka positif.");
+      return;
+    }
+
+    if (!editTanggal) {
+      setEditError("Tanggal transaksi wajib diisi.");
+      return;
+    }
+
+    setEditSubmitting(true);
+    setEditError(null);
+
+    try {
+      const res = await fetch(`/api/transactions/${editingTransaction.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          tipe: editTipe,
+          jumlah: parsedJumlah,
+          deskripsi: editDeskripsi.trim() || "-",
+          tanggal: editTanggal,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.message || "Gagal memperbarui transaksi.");
+      }
+
+      setEditingTransaction(null);
+      fetchTransactions();
+      if (user?.role === "admin") fetchDevData();
+    } catch (err: any) {
+      setEditError(err.message || "Terjadi kesalahan saat menyimpan perubahan.");
+    } finally {
+      setEditSubmitting(false);
+    }
+  };
+
+  // Handle Change Password
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPasswordError(null);
+    setPasswordSuccess(null);
+
+    if (!oldPassword || !newPassword) {
+      setPasswordError("Password lama dan baru wajib diisi.");
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      setPasswordError("Password baru minimal 6 karakter.");
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setPasswordError("Konfirmasi password baru tidak cocok.");
+      return;
+    }
+
+    setPasswordSubmitting(true);
+
+    try {
+      const res = await fetch("/api/auth/change-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ oldPassword, newPassword }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.message || "Gagal mengubah password.");
+      }
+
+      setPasswordSuccess(data.message || "Password berhasil diperbarui!");
+      setOldPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+
+      setTimeout(() => {
+        setIsPasswordModalOpen(false);
+        setPasswordSuccess(null);
+      }, 1500);
+    } catch (err: any) {
+      setPasswordError(err.message || "Terjadi kesalahan saat mengganti password.");
+    } finally {
+      setPasswordSubmitting(false);
+    }
+  };
+
+  // Filtered Transactions by Search Query
+  const filteredTransactions = transactions.filter((t) => {
+    if (!searchQuery.trim()) return true;
+    const q = searchQuery.toLowerCase().trim();
+    return (
+      t.deskripsi.toLowerCase().includes(q) ||
+      t.jumlah.toString().includes(q) ||
+      t.tanggal.includes(q) ||
+      (t.tipe === "income" ? "pemasukan" : "pengeluaran").includes(q)
+    );
+  });
+
+  // Cashflow Ratio & Analytics
+  const totalVolume = summary.total_income + summary.total_expense;
+  const incomeRatio = totalVolume > 0 ? Math.round((summary.total_income / totalVolume) * 100) : 50;
+  const expenseRatio = 100 - incomeRatio;
+  const expenseCount = transactions.filter((t) => t.tipe === "expense").length;
+  const avgExpense = expenseCount > 0 ? Math.round(summary.total_expense / expenseCount) : 0;
+
   // Direct CSV Fallback Export
   const handleExportCSV = () => {
     const query = new URLSearchParams();
@@ -485,8 +635,21 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Right: Theme Toggle & Logout */}
-          <div className="flex items-center gap-2">
+          {/* Right: Theme Toggle, Ganti Password & Logout */}
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            <button
+              onClick={() => {
+                setIsPasswordModalOpen(true);
+                setPasswordError(null);
+                setPasswordSuccess(null);
+              }}
+              type="button"
+              className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-md border border-[var(--border)] bg-[var(--surface)] text-xs font-mono text-[var(--text-secondary)] hover:text-sky-500 hover:border-sky-500/30 transition-colors cursor-pointer"
+              title="Ganti Password Akun"
+            >
+              <KeyRound size={13} />
+              <span className="hidden md:inline">Password</span>
+            </button>
             <ThemeToggle />
             <button
               onClick={handleLogout}
@@ -840,48 +1003,112 @@ export default function DashboardPage() {
               </div>
             </section>
 
-            {/* Actions & Filters Bar */}
-            <section className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3.5 p-3.5 sm:p-4 rounded-xl technical-card">
-              {/* Filters */}
-              <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-                <div className="flex items-center gap-1.5 text-xs font-mono text-[var(--text-secondary)]">
-                  <Filter size={13} />
-                  <span>Periode:</span>
+            {/* Rasio Arus Kas & Analitik Cepat */}
+            {totalVolume > 0 && (
+              <section className="technical-card p-4 rounded-xl space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs font-mono">
+                  <div className="flex items-center gap-2 text-[var(--text-muted)]">
+                    <BarChart3 size={15} className="text-[var(--accent)]" />
+                    <span className="uppercase tracking-wider font-semibold text-[var(--text-primary)]">
+                      Rasio Arus Kas & Ringkasan Periode
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-3 text-[11px] text-[var(--text-muted)]">
+                    <span>
+                      Total Volume: <strong className="text-[var(--text-primary)]">{formatIDR(totalVolume)}</strong>
+                    </span>
+                    <span>•</span>
+                    <span>
+                      Rata-rata Pengeluaran: <strong className="text-rose-500">{formatIDR(avgExpense)}</strong>
+                    </span>
+                  </div>
                 </div>
 
-                <div className="grid grid-cols-2 sm:flex sm:items-center gap-2">
-                  {/* Select Month */}
-                  <select
-                    value={selectedMonth}
-                    onChange={(e) => setSelectedMonth(e.target.value)}
-                    className="technical-input px-2.5 py-1.5 rounded-md text-xs font-mono cursor-pointer w-full sm:w-auto"
-                  >
-                    {MONTHS.map((m) => (
-                      <option key={m.value} value={m.value}>
-                        {m.label}
-                      </option>
-                    ))}
-                  </select>
+                {/* Progress Bar Rasio */}
+                <div className="space-y-1.5">
+                  <div className="w-full h-2.5 rounded-full bg-[var(--bg-secondary)] overflow-hidden flex border border-[var(--border)]">
+                    <div
+                      style={{ width: `${incomeRatio}%` }}
+                      className="h-full bg-emerald-500 transition-all duration-500"
+                      title={`Pemasukan: ${incomeRatio}%`}
+                    />
+                    <div
+                      style={{ width: `${expenseRatio}%` }}
+                      className="h-full bg-rose-500 transition-all duration-500"
+                      title={`Pengeluaran: ${expenseRatio}%`}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between text-[11px] font-mono text-[var(--text-muted)]">
+                    <span className="text-emerald-500 font-semibold">Pemasukan: {incomeRatio}%</span>
+                    <span className="text-rose-500 font-semibold">Pengeluaran: {expenseRatio}%</span>
+                  </div>
+                </div>
+              </section>
+            )}
 
-                  {/* Select Year */}
-                  <select
-                    value={selectedYear}
-                    onChange={(e) => setSelectedYear(e.target.value)}
-                    className="technical-input px-2.5 py-1.5 rounded-md text-xs font-mono cursor-pointer w-full sm:w-auto"
-                  >
-                    <option value="all">Semua Tahun</option>
-                    <option value="2027">2027</option>
-                    <option value="2026">2026</option>
-                    <option value="2025">2025</option>
-                    <option value="2024">2024</option>
-                  </select>
+            {/* Actions & Filters Bar */}
+            <section className="flex flex-col gap-3.5 p-3.5 sm:p-4 rounded-xl technical-card">
+              <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+                {/* Filters */}
+                <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                  <div className="flex items-center gap-1.5 text-xs font-mono text-[var(--text-secondary)]">
+                    <Filter size={13} />
+                    <span>Periode:</span>
+                  </div>
+
+                  <div className="grid grid-cols-2 sm:flex sm:items-center gap-2">
+                    <select
+                      value={selectedMonth}
+                      onChange={(e) => setSelectedMonth(e.target.value)}
+                      className="technical-input px-2.5 py-1.5 rounded-md text-xs font-mono cursor-pointer w-full sm:w-auto"
+                    >
+                      {MONTHS.map((m) => (
+                        <option key={m.value} value={m.value}>
+                          {m.label}
+                        </option>
+                      ))}
+                    </select>
+
+                    <select
+                      value={selectedYear}
+                      onChange={(e) => setSelectedYear(e.target.value)}
+                      className="technical-input px-2.5 py-1.5 rounded-md text-xs font-mono cursor-pointer w-full sm:w-auto"
+                    >
+                      <option value="all">Semua Tahun</option>
+                      <option value="2027">2027</option>
+                      <option value="2026">2026</option>
+                      <option value="2025">2025</option>
+                      <option value="2024">2024</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Search Bar Realtime */}
+                <div className="relative flex-1 max-w-md">
+                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] pointer-events-none" />
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Cari transaksi (kopi, bensin, gaji)..."
+                    className="technical-input w-full pl-8.5 pr-8 py-1.5 rounded-md text-xs font-mono placeholder:text-[var(--text-muted)]"
+                  />
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setSearchQuery("")}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer"
+                      title="Hapus pencarian"
+                    >
+                      ✕
+                    </button>
+                  )}
                 </div>
               </div>
 
-              {/* Action Buttons: Telegram Bot, Google Sheets, & Tambah Transaksi */}
-              <div className="flex flex-col sm:flex-row sm:items-center gap-2 w-full lg:w-auto">
+              {/* Action Buttons */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-2 border-t border-[var(--border-subtle)]">
                 <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full sm:w-auto">
-                  {/* Tombol Telegram Bot */}
                   <button
                     onClick={handleOpenTelegramModal}
                     type="button"
@@ -892,7 +1119,6 @@ export default function DashboardPage() {
                     <span>Telegram Bot</span>
                   </button>
 
-                  {/* Tombol Google Sheets */}
                   <button
                     onClick={handleOpenSheetsModal}
                     type="button"
@@ -904,7 +1130,6 @@ export default function DashboardPage() {
                   </button>
                 </div>
 
-                {/* Tombol Tambah Transaksi Manual (Prominent on Mobile) */}
                 <button
                   onClick={() => setIsModalOpen(true)}
                   type="button"
@@ -922,7 +1147,7 @@ export default function DashboardPage() {
                 <div>
                   <h2 className="text-sm font-semibold tracking-tight">Ledger Transaksi Pribadi</h2>
                   <p className="text-[10px] sm:text-[11px] font-mono text-[var(--text-muted)]">
-                    Daftar pembukuan terverifikasi ({transactions.length} entri ditemukan)
+                    Daftar pembukuan terverifikasi ({filteredTransactions.length} dari {transactions.length} entri ditemukan)
                   </p>
                 </div>
                 <button
@@ -943,14 +1168,24 @@ export default function DashboardPage() {
                     <div className="w-5 h-5 border-2 border-[var(--accent)] border-t-transparent rounded-full animate-spin" />
                     <span>Memuat transaksi...</span>
                   </div>
-                ) : transactions.length === 0 ? (
+                ) : filteredTransactions.length === 0 ? (
                   <div className="p-8 text-center text-xs font-mono text-[var(--text-muted)] space-y-2">
                     <Calendar size={24} className="mx-auto opacity-30" />
-                    <p className="font-semibold text-[var(--text-primary)]">Belum ada transaksi</p>
-                    <p className="text-[11px]">Ketik chat di Telegram atau klik Tambah Transaksi.</p>
+                    <p className="font-semibold text-[var(--text-primary)]">
+                      {searchQuery ? `Tidak ada transaksi untuk "${searchQuery}"` : "Belum ada transaksi"}
+                    </p>
+                    <p className="text-[11px]">
+                      {searchQuery ? (
+                        <button onClick={() => setSearchQuery("")} className="text-[var(--accent)] underline cursor-pointer">
+                          Reset Pencarian
+                        </button>
+                      ) : (
+                        "Ketik chat di Telegram atau klik Tambah Transaksi."
+                      )}
+                    </p>
                   </div>
                 ) : (
-                  transactions.map((t) => (
+                  filteredTransactions.map((t) => (
                     <div key={t.id} className="p-3.5 space-y-2 hover:bg-[var(--surface-hover)] transition-colors">
                       <div className="flex items-start justify-between gap-3">
                         <div className="space-y-1 flex-1 min-w-0">
@@ -981,14 +1216,25 @@ export default function DashboardPage() {
                           >
                             {t.tipe === "income" ? `+ ${formatIDR(t.jumlah)}` : `- ${formatIDR(t.jumlah)}`}
                           </div>
-                          <button
-                            onClick={() => handleDelete(t.id)}
-                            disabled={deletingId === t.id}
-                            className="mt-1.5 text-[11px] font-mono text-[var(--text-muted)] hover:text-rose-500 inline-flex items-center gap-1 cursor-pointer disabled:opacity-40"
-                          >
-                            <Trash2 size={12} />
-                            <span>Hapus</span>
-                          </button>
+                          <div className="mt-1.5 flex items-center justify-end gap-2.5 text-[11px] font-mono text-[var(--text-muted)]">
+                            <button
+                              onClick={() => handleOpenEditModal(t)}
+                              className="hover:text-sky-500 inline-flex items-center gap-1 cursor-pointer"
+                              title="Edit transaksi"
+                            >
+                              <Pencil size={12} />
+                              <span>Edit</span>
+                            </button>
+                            <button
+                              onClick={() => handleDelete(t.id)}
+                              disabled={deletingId === t.id}
+                              className="hover:text-rose-500 inline-flex items-center gap-1 cursor-pointer disabled:opacity-40"
+                              title="Hapus transaksi"
+                            >
+                              <Trash2 size={12} />
+                              <span>Hapus</span>
+                            </button>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -1018,22 +1264,28 @@ export default function DashboardPage() {
                           </div>
                         </td>
                       </tr>
-                    ) : transactions.length === 0 ? (
+                    ) : filteredTransactions.length === 0 ? (
                       <tr>
                         <td colSpan={5} className="py-16 text-center text-[var(--text-muted)]">
                           <div className="max-w-xs mx-auto space-y-2">
                             <Calendar size={28} className="mx-auto opacity-30" />
                             <p className="font-semibold text-xs text-[var(--text-primary)]">
-                              Belum ada transaksi pada periode ini
+                              {searchQuery ? `Tidak ada transaksi yang cocok untuk "${searchQuery}"` : "Belum ada transaksi pada periode ini"}
                             </p>
                             <p className="text-[11px]">
-                              Klik tombol &quot;Tambah Transaksi&quot; atau kirim chat ke bot Telegram Anda untuk mulai mencatat.
+                              {searchQuery ? (
+                                <button onClick={() => setSearchQuery("")} className="text-[var(--accent)] underline cursor-pointer">
+                                  Reset Pencarian
+                                </button>
+                              ) : (
+                                "Klik tombol \"Tambah Transaksi\" atau kirim chat ke bot Telegram Anda untuk mulai mencatat."
+                              )}
                             </p>
                           </div>
                         </td>
                       </tr>
                     ) : (
-                      transactions.map((t) => (
+                      filteredTransactions.map((t) => (
                         <tr
                           key={t.id}
                           className="hover:bg-[var(--surface-hover)] transition-colors group"
@@ -1065,14 +1317,23 @@ export default function DashboardPage() {
                             {t.tipe === "income" ? `+ ${formatIDR(t.jumlah)}` : `- ${formatIDR(t.jumlah)}`}
                           </td>
                           <td className="py-3.5 px-4 text-center whitespace-nowrap">
-                            <button
-                              onClick={() => handleDelete(t.id)}
-                              disabled={deletingId === t.id}
-                              className="p-1 rounded text-[var(--text-muted)] hover:text-rose-500 hover:bg-rose-500/10 transition-colors cursor-pointer disabled:opacity-40"
-                              title="Hapus transaksi ini"
-                            >
-                              <Trash2 size={14} />
-                            </button>
+                            <div className="inline-flex items-center gap-1 justify-center">
+                              <button
+                                onClick={() => handleOpenEditModal(t)}
+                                className="p-1 rounded text-[var(--text-muted)] hover:text-sky-500 hover:bg-sky-500/10 transition-colors cursor-pointer"
+                                title="Edit transaksi ini"
+                              >
+                                <Pencil size={13} />
+                              </button>
+                              <button
+                                onClick={() => handleDelete(t.id)}
+                                disabled={deletingId === t.id}
+                                className="p-1 rounded text-[var(--text-muted)] hover:text-rose-500 hover:bg-rose-500/10 transition-colors cursor-pointer disabled:opacity-40"
+                                title="Hapus transaksi ini"
+                              >
+                                <Trash2 size={13} />
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       ))
@@ -1434,6 +1695,243 @@ export default function DashboardPage() {
                   className="px-5 py-2 rounded-md bg-[var(--text-primary)] text-[var(--bg)] text-xs font-semibold hover:opacity-90 transition-opacity cursor-pointer disabled:opacity-50"
                 >
                   {submitting ? "Menyimpan..." : "Simpan Transaksi"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================== */}
+      {/* MODAL: EDIT TRANSAKSI */}
+      {/* ============================================================== */}
+      {editingTransaction && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in">
+          <div className="technical-card w-full max-w-md rounded-2xl p-6 shadow-2xl relative">
+            <div className="flex items-center justify-between pb-4 border-b border-[var(--border)]">
+              <div>
+                <h3 className="text-base font-bold">Edit Transaksi #{editingTransaction.id}</h3>
+                <p className="text-[11px] font-mono text-[var(--text-muted)]">
+                  Perbarui detail arus kas secara akurat
+                </p>
+              </div>
+              <button
+                onClick={() => setEditingTransaction(null)}
+                className="p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] rounded cursor-pointer"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {editError && (
+              <div className="mt-4 p-3 rounded border border-rose-500/20 bg-rose-500/10 text-rose-500 text-xs flex items-center gap-2">
+                <AlertCircle size={14} />
+                <span>{editError}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleSaveEdit} className="mt-4 space-y-4">
+              <div>
+                <label className="block text-xs font-mono text-[var(--text-secondary)] mb-1.5 uppercase tracking-wider">
+                  Jenis Transaksi
+                </label>
+                <div className="grid grid-cols-2 gap-2 p-1 rounded-lg border border-[var(--border)] bg-[var(--bg-secondary)]">
+                  <button
+                    type="button"
+                    onClick={() => setEditTipe("expense")}
+                    className={`py-2 text-xs font-mono font-medium rounded-md transition-all cursor-pointer ${
+                      editTipe === "expense"
+                        ? "bg-rose-500 text-white font-bold shadow-xs"
+                        : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+                    }`}
+                  >
+                    PENGELUARAN (-)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEditTipe("income")}
+                    className={`py-2 text-xs font-mono font-medium rounded-md transition-all cursor-pointer ${
+                      editTipe === "income"
+                        ? "bg-emerald-500 text-white font-bold shadow-xs"
+                        : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+                    }`}
+                  >
+                    PEMASUKAN (+)
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-mono text-[var(--text-secondary)] mb-1.5 uppercase tracking-wider">
+                  Nominal (IDR)
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-mono text-[var(--text-muted)]">
+                    Rp
+                  </span>
+                  <input
+                    type="text"
+                    required
+                    placeholder="0"
+                    value={editJumlah}
+                    onChange={(e) => {
+                      const raw = e.target.value.replace(/[^0-9]/g, "");
+                      if (!raw) {
+                        setEditJumlah("");
+                      } else {
+                        setEditJumlah(new Intl.NumberFormat("id-ID").format(parseInt(raw, 10)));
+                      }
+                    }}
+                    className="technical-input w-full pl-9 pr-3 py-2 text-sm font-mono font-bold rounded-md"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-mono text-[var(--text-secondary)] mb-1.5 uppercase tracking-wider">
+                  Tanggal Transaksi
+                </label>
+                <input
+                  type="date"
+                  required
+                  value={editTanggal}
+                  onChange={(e) => setEditTanggal(e.target.value)}
+                  className="technical-input w-full px-3 py-2 text-sm font-mono rounded-md"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-mono text-[var(--text-secondary)] mb-1.5 uppercase tracking-wider">
+                  Deskripsi / Keterangan
+                </label>
+                <input
+                  type="text"
+                  placeholder="Contoh: Belanja Bulanan / Honor Desain"
+                  value={editDeskripsi}
+                  onChange={(e) => setEditDeskripsi(e.target.value)}
+                  maxLength={200}
+                  className="technical-input w-full px-3 py-2 text-sm rounded-md"
+                />
+              </div>
+
+              <div className="pt-2 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setEditingTransaction(null)}
+                  className="px-4 py-2 rounded-md border border-[var(--border)] text-xs font-mono text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={editSubmitting}
+                  className="px-5 py-2 rounded-md bg-[var(--accent)] text-black text-xs font-mono font-bold hover:opacity-90 transition-opacity cursor-pointer disabled:opacity-50"
+                >
+                  {editSubmitting ? "Menyimpan..." : "Simpan Perubahan"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================== */}
+      {/* MODAL: GANTI PASSWORD AKUN */}
+      {/* ============================================================== */}
+      {isPasswordModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in">
+          <div className="technical-card w-full max-w-md rounded-2xl p-6 shadow-2xl relative">
+            <div className="flex items-center justify-between pb-4 border-b border-[var(--border)]">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-lg bg-sky-500/10 text-sky-500 border border-sky-500/20">
+                  <KeyRound size={18} />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold">Keamanan & Password</h3>
+                  <p className="text-[11px] font-mono text-[var(--text-muted)]">
+                    Perbarui kata sandi akun @{user?.username}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsPasswordModalOpen(false)}
+                className="p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] rounded cursor-pointer"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {passwordError && (
+              <div className="mt-4 p-3 rounded border border-rose-500/20 bg-rose-500/10 text-rose-500 text-xs flex items-center gap-2">
+                <AlertCircle size={14} />
+                <span>{passwordError}</span>
+              </div>
+            )}
+
+            {passwordSuccess && (
+              <div className="mt-4 p-3 rounded border border-emerald-500/20 bg-emerald-500/10 text-emerald-500 text-xs flex items-center gap-2">
+                <Check size={14} />
+                <span>{passwordSuccess}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleChangePassword} className="mt-4 space-y-4">
+              <div>
+                <label className="block text-xs font-mono text-[var(--text-secondary)] mb-1.5 uppercase tracking-wider">
+                  Password Lama
+                </label>
+                <input
+                  type="password"
+                  required
+                  placeholder="Masukkan password saat ini"
+                  value={oldPassword}
+                  onChange={(e) => setOldPassword(e.target.value)}
+                  className="technical-input w-full px-3 py-2 text-sm rounded-md"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-mono text-[var(--text-secondary)] mb-1.5 uppercase tracking-wider">
+                  Password Baru (Min. 6 Karakter)
+                </label>
+                <input
+                  type="password"
+                  required
+                  placeholder="Masukkan password baru"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  className="technical-input w-full px-3 py-2 text-sm rounded-md"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-mono text-[var(--text-secondary)] mb-1.5 uppercase tracking-wider">
+                  Konfirmasi Password Baru
+                </label>
+                <input
+                  type="password"
+                  required
+                  placeholder="Ketik ulang password baru"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="technical-input w-full px-3 py-2 text-sm rounded-md"
+                />
+              </div>
+
+              <div className="pt-2 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsPasswordModalOpen(false)}
+                  className="px-4 py-2 rounded-md border border-[var(--border)] text-xs font-mono text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={passwordSubmitting}
+                  className="px-5 py-2 rounded-md bg-[var(--text-primary)] text-[var(--bg)] text-xs font-semibold hover:opacity-90 transition-opacity cursor-pointer disabled:opacity-50"
+                >
+                  {passwordSubmitting ? "Memproses..." : "Perbarui Password"}
                 </button>
               </div>
             </form>

@@ -1,6 +1,8 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import Script from "next/script";
 import { Bricolage_Grotesque, Space_Mono } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import "./globals.css";
 
 const bricolage = Bricolage_Grotesque({
@@ -16,11 +18,20 @@ const spaceMono = Space_Mono({
   display: "swap",
 });
 
+export const viewport: Viewport = {
+  themeColor: "#0b0d11",
+};
+
 export const metadata: Metadata = {
   title: "ZailTrack — High-Density Financial Ledger",
   description:
     "A clean, secure, and modern financial management ledger with zero generic slop. Real-time cashflow tracking, monthly analytics, and technical reporting.",
   authors: [{ name: "Fuzail Fazle Rabbi", url: "https://github.com/FuzailFr" }],
+  manifest: "/manifest.json",
+  icons: {
+    icon: "/icon.svg",
+    apple: "/icon.svg",
+  },
 };
 
 const THEME_INIT_SCRIPT = `
@@ -56,6 +67,8 @@ export default function RootLayout({
       </head>
       <body className="min-h-screen bg-[var(--bg)] text-[var(--text-primary)] antialiased">
         {children}
+        <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   );

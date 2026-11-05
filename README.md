@@ -50,7 +50,17 @@ Technical personal finance ledger with real-time Google Sheets synchronization, 
   - Cascade user account deletion (`DELETE /api/dev/users/:id`).
   - Built-in anti-lockout protection: Admins cannot delete or demote their own account.
 
-### 4. Zero-Trust Security Architecture
+### 4. Interactive Ledger & Daily Cashflow Analytics
+- Real-time instant search bar across descriptions, amounts, and categories.
+- In-place transaction editing (`PUT /api/transactions/:id`) with anti-IDOR authorization.
+- Cashflow ratio & volume analytics bar comparing income vs expense in real time.
+- Dedicated user security modal for self-service password changes (`POST /api/auth/change-password`).
+
+### 5. Progressive Web App (PWA) & Telemetry
+- Installable as a native app on iOS & Android devices (`manifest.json` with standalone display).
+- Integrated `@vercel/analytics` and `@vercel/speed-insights` for privacy-first visitor and Core Web Vitals telemetry.
+
+### 6. Zero-Trust Security Architecture
 - Zero hardcoded secrets: all credentials read from environment variables.
 - Authentication via secure, HTTP-Only, SameSite cookies signed with HS256 JWT.
 - Immunity to IDOR: All transaction queries strictly scope to `WHERE user_id = session.userId`.

@@ -11,6 +11,8 @@
   "dependencies": {
     "@neondatabase/serverless": "^0.10.4",
     "@tailwindcss/postcss": "^4",
+    "@vercel/analytics": "^2.0.1",
+    "@vercel/speed-insights": "^2.1.0",
     "bcryptjs": "^3.0.2",
     "jose": "^5.9.6",
     "lucide-react": "^0.462.0",
