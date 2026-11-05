@@ -2,11 +2,11 @@ import { NextResponse } from "next/server";
 import { verifyFeedToken } from "@/lib/auth";
 import { getDb, initDbSchema } from "@/lib/db";
 
-// Proteksi Anti-Hack: Formula / CSV Injection Sanitizer (OWASP Standard)
-function sanitizeCell(val: string): string {
+// Bersihkan teks agar tidak merusak format CSV dan aman dari formula injection
+function cleanCsvText(val: string): string {
   if (!val) return '""';
   let str = String(val).trim();
-  // Jika karakter pertama adalah simbol formula spreadsheet, netralkan dengan tanda kutip tunggal
+  // Netralkan jika diawali karakter formula spreadsheet berbahaya
   if (/^[=+\-@\t\r]/.test(str)) {
     str = "'" + str;
   }
@@ -36,35 +36,29 @@ export async function GET(request: Request) {
     await initDbSchema();
     const sql = getDb();
 
-    // Ambil SEMUA transaksi pengguna terurut kronologis dari awal sampai terbaru
+    // Ambil SEMUA transaksi pengguna terurut kronologis dari awal ke terbaru
     const rows = await sql`
       SELECT 
         id,
         tipe,
         jumlah,
         deskripsi,
-        TO_CHAR(tanggal, 'DD') AS hari,
-        TO_CHAR(tanggal, 'MM') AS bulan,
-        TO_CHAR(tanggal, 'YYYY') AS tahun,
         TO_CHAR(tanggal, 'DD/MM/YYYY') AS tanggal_formatted
       FROM transactions
       WHERE user_id = ${payload.userId}
       ORDER BY tanggal ASC, id ASC
     `;
 
-    // Kolom terpisah yang sangat jelas, rapi, dan mudah dibaca tanpa jam
+    // 8 Kolom Standar Keuangan: Bersih, Rapi, Tanpa Jam, Tanpa Formula Aneh
     const headers = [
       "No",
-      "Tanggal (DD/MM/YYYY)",
-      "Hari",
-      "Bulan",
-      "Tahun",
+      "Tanggal",
       "Kategori",
       "Pemasukan (IDR)",
       "Pengeluaran (IDR)",
-      "Nominal Bersih (IDR)",
-      "Saldo Berjalan (IDR)",
-      "Keterangan / Deskripsi",
+      "Saldo Bersih (IDR)",
+      "Saldo Akumulasi (IDR)",
+      "Keterangan",
     ];
 
     let runningBalance = 0;
@@ -76,32 +70,24 @@ export async function GET(request: Request) {
 
       const pemasukan = isIncome ? jumlah : 0;
       const pengeluaran = !isIncome ? jumlah : 0;
-      const nominalBersih = isIncome ? jumlah : -jumlah;
+      const saldoBersih = isIncome ? jumlah : -jumlah;
 
-      runningBalance += nominalBersih;
+      runningBalance += saldoBersih;
 
       const kategori = isIncome ? "PEMASUKAN" : "PENGELUARAN";
-      const sanitizedDesc = sanitizeCell(row.deskripsi || "-");
-
-      // Format formula literal ="DD/MM/YYYY" agar Google Sheets tidak mengubahnya jadi angka serial 46331
-      const tanggalCell = `="${row.tanggal_formatted}"`;
-      const hariCell = `="${row.hari}"`;
-      const bulanCell = `="${row.bulan}"`;
-      const tahunCell = `="${row.tahun}"`;
+      const keterangan = cleanCsvText(row.deskripsi || "-");
+      const tanggal = row.tanggal_formatted; // Murni string DD/MM/YYYY tanpa tanda kutip ganda/sama dengan
 
       csvLines.push(
         [
           index + 1,
-          tanggalCell,
-          hariCell,
-          bulanCell,
-          tahunCell,
+          tanggal,
           kategori,
           pemasukan,
           pengeluaran,
-          nominalBersih,
+          saldoBersih,
           runningBalance,
-          sanitizedDesc,
+          keterangan,
         ].join(",")
       );
     });

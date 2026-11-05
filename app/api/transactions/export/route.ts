@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getSessionUser } from "@/lib/auth";
 import { getDb } from "@/lib/db";
 
-function sanitizeCell(val: string): string {
+function cleanCsvText(val: string): string {
   if (!val) return '""';
   let str = String(val).trim();
   if (/^[=+\-@\t\r]/.test(str)) {
@@ -29,9 +29,6 @@ export async function GET(request: Request) {
       rows = await sql`
         SELECT 
           TO_CHAR(tanggal, 'DD/MM/YYYY') AS tanggal_formatted,
-          TO_CHAR(tanggal, 'DD') AS hari,
-          TO_CHAR(tanggal, 'MM') AS bulan,
-          TO_CHAR(tanggal, 'YYYY') AS tahun,
           tipe, 
           jumlah, 
           deskripsi
@@ -45,9 +42,6 @@ export async function GET(request: Request) {
       rows = await sql`
         SELECT 
           TO_CHAR(tanggal, 'DD/MM/YYYY') AS tanggal_formatted,
-          TO_CHAR(tanggal, 'DD') AS hari,
-          TO_CHAR(tanggal, 'MM') AS bulan,
-          TO_CHAR(tanggal, 'YYYY') AS tahun,
           tipe, 
           jumlah, 
           deskripsi
@@ -59,16 +53,13 @@ export async function GET(request: Request) {
 
     const headers = [
       "No",
-      "Tanggal (DD/MM/YYYY)",
-      "Hari",
-      "Bulan",
-      "Tahun",
+      "Tanggal",
       "Kategori",
       "Pemasukan (IDR)",
       "Pengeluaran (IDR)",
-      "Nominal Bersih (IDR)",
-      "Saldo Berjalan (IDR)",
-      "Keterangan / Deskripsi",
+      "Saldo Bersih (IDR)",
+      "Saldo Akumulasi (IDR)",
+      "Keterangan",
     ];
 
     let runningBalance = 0;
@@ -79,25 +70,22 @@ export async function GET(request: Request) {
       const isIncome = row.tipe === "income";
       const pemasukan = isIncome ? jumlah : 0;
       const pengeluaran = !isIncome ? jumlah : 0;
-      const nominalBersih = isIncome ? jumlah : -jumlah;
-      runningBalance += nominalBersih;
+      const saldoBersih = isIncome ? jumlah : -jumlah;
+      runningBalance += saldoBersih;
 
       const kategori = isIncome ? "PEMASUKAN" : "PENGELUARAN";
-      const sanitizedDesc = sanitizeCell(row.deskripsi || "-");
+      const keterangan = cleanCsvText(row.deskripsi || "-");
 
       csvLines.push(
         [
           index + 1,
-          `="${row.tanggal_formatted}"`,
-          `="${row.hari}"`,
-          `="${row.bulan}"`,
-          `="${row.tahun}"`,
+          row.tanggal_formatted,
           kategori,
           pemasukan,
           pengeluaran,
-          nominalBersih,
+          saldoBersih,
           runningBalance,
-          sanitizedDesc,
+          keterangan,
         ].join(",")
       );
     });
