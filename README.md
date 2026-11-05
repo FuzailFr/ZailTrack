@@ -146,5 +146,24 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ---
 
+## Changelog & Release Notes
+
+### Version 2.1 (06 November 2026)
+- **Vercel Analytics & Speed Insights**: Real-time traffic, pageviews, and Core Web Vitals telemetry integration.
+- **In-Place Transaction Editing**: Added modal for editing existing transactions (`PUT /api/transactions/:id`) with anti-IDOR checks.
+- **Instant Search Bar**: Sub-millisecond client-side filtering by description, category, and amount.
+- **User Security & Password Change**: Self-service modal for authenticated password updates with Bcrypt Salt 10 hashing.
+- **Cashflow Ratio Bar**: Dynamic progress bar visualizer for income vs. expense ratio and monthly volume.
+- **Progressive Web App (PWA)**: Web app manifest and standalone home screen icon for iOS and Android.
+- **Enhanced Bot Telemetry**: `/status` Telegram command now reports real-time database query latency, time of inspection, and latest transaction record timestamp.
+
+### Version 2.0 (05 November 2026)
+- **Telegram Quick-Entry Bot**: Natural language transaction parser with command suite.
+- **Google Sheets Real-Time Sync**: Live 11-column CSV feed formula integration with formula injection sanitization.
+- **Developer Cockpit**: Database metrics, system telemetry, and user management (role switcher & cascading account deletion).
+- **Mobile Dual-View Ledger**: Automatic adaptation between mobile card list and dense desktop tabular ledger.
+
+---
+
 ## License
 Distributed under the MIT License. Copyright (c) 2026.

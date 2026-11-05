@@ -170,18 +170,40 @@ export async function POST(request: Request) {
     // ==============================================================
     if (lowerCmd === "/status") {
       const startPing = performance.now();
-      await sql`SELECT 1 as ping`;
+      const [, latestTx] = await Promise.all([
+        sql`SELECT 1 as ping`,
+        sql`SELECT created_at FROM transactions ORDER BY id DESC LIMIT 1`,
+      ]);
       const latency = Math.round(performance.now() - startPing);
+
+      let lastTxInfo = "Belum ada transaksi";
+      if (latestTx.length > 0 && latestTx[0].created_at) {
+        lastTxInfo =
+          new Date(latestTx[0].created_at).toLocaleString("id-ID", {
+            timeZone: "Asia/Jakarta",
+            dateStyle: "medium",
+            timeStyle: "short",
+          }) + " WIB";
+      }
+
+      const nowWIB =
+        new Date().toLocaleString("id-ID", {
+          timeZone: "Asia/Jakarta",
+          dateStyle: "medium",
+          timeStyle: "short",
+        }) + " WIB";
 
       await sendTelegramMessage(
         chatId,
-        `🟢 <b>Status Sistem ZailTrack</b>\n\n` +
+        `🟢 <b>Status Sistem ZailTrack (v2.1)</b>\n\n` +
         `• <b>Server Web:</b> Online (Vercel Edge Global)\n` +
         `• <b>Database:</b> Terhubung (Neon Serverless PostgreSQL)\n` +
         `• <b>Latensi Query:</b> ${latency} ms\n` +
         `• <b>Protokol:</b> HTTPS / TLS 1.3\n` +
-        `• <b>Webhook:</b> Aktif & Realtime\n\n` +
-        `Semua layanan beroperasi lancar dan siap digunakan.`
+        `• <b>Pengecekan:</b> ${nowWIB}\n` +
+        `• <b>Transaksi Terakhir:</b> ${lastTxInfo}\n` +
+        `• <b>Versi Rilis:</b> v2.1 (Production)\n\n` +
+        `Semua layanan beroperasi optimal dan data realtime tersinkron.`
       );
       return NextResponse.json({ ok: true });
     }
