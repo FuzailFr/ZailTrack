@@ -2,6 +2,15 @@ import { NextResponse } from "next/server";
 import { verifyFeedToken } from "@/lib/auth";
 import { getDb, initDbSchema } from "@/lib/db";
 
+// Format mata uang Rupiah yang sangat jelas dan ramah orang awam (contoh: "Rp 1.000.000")
+function formatRupiah(num: number): string {
+  const isNeg = num < 0;
+  const abs = Math.abs(num);
+  const formatted = new Intl.NumberFormat("id-ID").format(abs);
+  return isNeg ? `"-Rp ${formatted}"` : `"Rp ${formatted}"`;
+}
+
+// Bersihkan teks agar tidak merusak format CSV dan aman dari formula injection
 function cleanCsvText(val: string): string {
   if (!val) return '""';
   let str = String(val).trim();
@@ -50,7 +59,7 @@ export async function GET(request: Request) {
       ORDER BY tanggal ASC, id ASC
     `;
 
-    // 11 Kolom Lengkap, Rapi, Bersih Tanpa Jam & Tanpa Tanda Kutip Berantakan
+    // 11 Kolom Lengkap, Rapi & Nominal Rupiah yang Jelas (Format: Rp 1.000.000)
     const headers = [
       "No",
       "Tanggal",
@@ -89,10 +98,10 @@ export async function GET(request: Request) {
           row.bulan,
           row.tahun,
           kategori,
-          pemasukan,
-          pengeluaran,
-          nominalBersih,
-          runningBalance,
+          formatRupiah(pemasukan),
+          formatRupiah(pengeluaran),
+          formatRupiah(nominalBersih),
+          formatRupiah(runningBalance),
           keterangan,
         ].join(",")
       );

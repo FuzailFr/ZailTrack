@@ -2,6 +2,13 @@ import { NextResponse } from "next/server";
 import { getSessionUser } from "@/lib/auth";
 import { getDb } from "@/lib/db";
 
+function formatRupiah(num: number): string {
+  const isNeg = num < 0;
+  const abs = Math.abs(num);
+  const formatted = new Intl.NumberFormat("id-ID").format(abs);
+  return isNeg ? `"-Rp ${formatted}"` : `"Rp ${formatted}"`;
+}
+
 function cleanCsvText(val: string): string {
   if (!val) return '""';
   let str = String(val).trim();
@@ -93,10 +100,10 @@ export async function GET(request: Request) {
           row.bulan,
           row.tahun,
           kategori,
-          pemasukan,
-          pengeluaran,
-          nominalBersih,
-          runningBalance,
+          formatRupiah(pemasukan),
+          formatRupiah(pengeluaran),
+          formatRupiah(nominalBersih),
+          formatRupiah(runningBalance),
           keterangan,
         ].join(",")
       );
