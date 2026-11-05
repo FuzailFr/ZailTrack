@@ -336,7 +336,7 @@ export default function DashboardPage() {
             </div>
             <div className="flex items-center gap-2 text-xs text-[var(--text-muted)] font-mono mt-0.5">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
-              <span>USER: @{user?.username}</span>
+              <span>USER // {user?.username}</span>
             </div>
           </div>
         </div>
@@ -498,7 +498,7 @@ export default function DashboardPage() {
                         <tr key={u.id} className="hover:bg-[var(--surface-hover)]">
                           <td className="py-3 px-4 text-[var(--text-muted)]">#{u.id}</td>
                           <td className="py-3 px-4 font-bold text-[var(--text-primary)]">
-                            @{u.username}
+                            {u.username}
                           </td>
                           <td className="py-3 px-4">
                             {u.role === "admin" ? (
@@ -538,7 +538,7 @@ export default function DashboardPage() {
                         <tr key={a.id} className="hover:bg-[var(--surface-hover)]">
                           <td className="py-3 px-4 text-[var(--text-muted)]">#{a.id}</td>
                           <td className="py-3 px-4 font-bold text-[var(--text-primary)]">
-                            @{a.username}
+                            {a.username}
                           </td>
                           <td className="py-3 px-4 text-[var(--text-secondary)]">{a.tanggal}</td>
                           <td className="py-3 px-4 font-sans font-medium">{a.deskripsi}</td>
