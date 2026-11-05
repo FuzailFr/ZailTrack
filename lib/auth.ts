@@ -16,7 +16,7 @@ export interface UserPayload {
   role: string;
 }
 
-// Generate JWT token 7 hari
+// Generate JWT token 7 hari untuk sesi web browser
 export async function signToken(payload: UserPayload): Promise<string> {
   const secretKey = getSecretKey();
   return new SignJWT({ ...payload })
@@ -26,7 +26,32 @@ export async function signToken(payload: UserPayload): Promise<string> {
     .sign(secretKey);
 }
 
-// Verifikasi JWT token
+// Generate token jangka panjang (365 hari) khusus integrasi Google Sheets
+export async function signFeedToken(userId: number, username: string): Promise<string> {
+  const secretKey = getSecretKey();
+  return new SignJWT({ userId, username, scope: "sheets_feed" })
+    .setProtectedHeader({ alg: "HS256" })
+    .setIssuedAt()
+    .setExpirationTime("365d")
+    .sign(secretKey);
+}
+
+// Verifikasi Feed Token Google Sheets
+export async function verifyFeedToken(token: string): Promise<{ userId: number; username: string } | null> {
+  try {
+    const secretKey = getSecretKey();
+    const { payload } = await jwtVerify(token, secretKey);
+    if (payload.scope !== "sheets_feed") return null;
+    return {
+      userId: Number(payload.userId),
+      username: String(payload.username),
+    };
+  } catch {
+    return null;
+  }
+}
+
+// Verifikasi JWT token sesi browser
 export async function verifyToken(token: string): Promise<UserPayload | null> {
   try {
     const secretKey = getSecretKey();

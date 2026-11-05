@@ -22,6 +22,11 @@ import {
   LayoutDashboard,
   Server,
   RefreshCw,
+  ExternalLink,
+  Copy,
+  Check,
+  Layers,
+  Sparkles,
 } from "lucide-react";
 import ThemeToggle from "@/components/ThemeToggle";
 
@@ -108,7 +113,7 @@ export default function DashboardPage() {
   const [selectedMonth, setSelectedMonth] = useState<string>(currentMonth);
   const [selectedYear, setSelectedYear] = useState<string>(currentYear);
 
-  // Modal State
+  // Modal State: Tambah Transaksi
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [formTipe, setFormTipe] = useState<"income" | "expense">("expense");
   const [formJumlah, setFormJumlah] = useState("");
@@ -119,6 +124,12 @@ export default function DashboardPage() {
   const [submitting, setSubmitting] = useState(false);
   const [modalError, setModalError] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
+
+  // Modal State: Google Sheets Realtime
+  const [isSheetsModalOpen, setIsSheetsModalOpen] = useState(false);
+  const [sheetsLoading, setSheetsLoading] = useState(false);
+  const [sheetsData, setSheetsData] = useState<{ feedUrl: string; formula: string } | null>(null);
+  const [copiedFormula, setCopiedFormula] = useState(false);
 
   // Dev Mode State
   const [devMetrics, setDevMetrics] = useState<DevMetrics | null>(null);
@@ -212,6 +223,32 @@ export default function DashboardPage() {
     }
   }, [activeView, user]);
 
+  // 4. Open Google Sheets Modal & Fetch Token
+  const handleOpenSheetsModal = async () => {
+    setIsSheetsModalOpen(true);
+    if (!sheetsData) {
+      setSheetsLoading(true);
+      try {
+        const res = await fetch("/api/sheets/token");
+        if (res.ok) {
+          const data = await res.json();
+          setSheetsData(data);
+        }
+      } catch (err) {
+        console.error("Gagal memuat data Google Sheets", err);
+      } finally {
+        setSheetsLoading(false);
+      }
+    }
+  };
+
+  const handleCopyFormula = () => {
+    if (!sheetsData?.formula) return;
+    navigator.clipboard.writeText(sheetsData.formula);
+    setCopiedFormula(true);
+    setTimeout(() => setCopiedFormula(false), 2000);
+  };
+
   // Logout
   const handleLogout = async () => {
     try {
@@ -293,7 +330,7 @@ export default function DashboardPage() {
     }
   };
 
-  // Export CSV
+  // Direct CSV Fallback Export
   const handleExportCSV = () => {
     const query = new URLSearchParams();
     if (selectedMonth !== "all") query.set("month", selectedMonth);
@@ -671,16 +708,16 @@ export default function DashboardPage() {
                 </select>
               </div>
 
-              {/* Action Buttons */}
-              <div className="flex items-center gap-2.5">
+              {/* Action Buttons: Google Sheets Realtime & Tambah Transaksi */}
+              <div className="flex flex-wrap items-center gap-2.5">
                 <button
-                  onClick={handleExportCSV}
+                  onClick={handleOpenSheetsModal}
                   type="button"
-                  className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-md border border-[var(--border)] bg-[var(--surface)] text-xs font-mono text-[var(--text-primary)] hover:border-[var(--accent)] transition-colors cursor-pointer"
-                  title="Unduh data dalam format CSV yang kompatibel dengan Excel & Google Sheets"
+                  className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-3.5 py-2 rounded-md border border-emerald-500/30 bg-emerald-500/10 text-xs font-mono font-semibold text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 transition-colors cursor-pointer shadow-xs"
+                  title="Hubungkan seluruh data secara realtime ke Google Spreadsheets tanpa download manual"
                 >
-                  <FileSpreadsheet size={14} className="text-emerald-500" />
-                  <span>Ekspor CSV</span>
+                  <FileSpreadsheet size={15} className="text-emerald-500 shrink-0" />
+                  <span>Google Sheets (Realtime)</span>
                 </button>
 
                 <button
@@ -793,7 +830,130 @@ export default function DashboardPage() {
         )}
       </main>
 
-      {/* Modal: Tambah Transaksi */}
+      {/* ============================================================== */}
+      {/* MODAL: SINKRONISASI REALTIME GOOGLE SPREADSHEETS */}
+      {/* ============================================================== */}
+      {isSheetsModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in">
+          <div className="technical-card w-full max-w-xl rounded-2xl p-6 shadow-2xl relative space-y-5">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between pb-3 border-b border-[var(--border)]">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
+                  <FileSpreadsheet size={20} />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold">Sinkronisasi Google Sheets Realtime</h3>
+                  <p className="text-[11px] font-mono text-[var(--text-muted)]">
+                    Koneksi live otomatis tanpa perlu download berulang kali
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsSheetsModalOpen(false)}
+                className="p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] rounded cursor-pointer"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Explanation & Steps */}
+            <div className="space-y-4 text-xs">
+              <div className="p-3.5 rounded-lg border border-[var(--border)] bg-[var(--bg-secondary)] space-y-2">
+                <div className="flex items-center gap-2 font-semibold text-[var(--text-primary)]">
+                  <Sparkles size={14} className="text-emerald-500" />
+                  <span>Keuntungan Mode Google Sheets:</span>
+                </div>
+                <ul className="list-disc list-inside space-y-1 text-[var(--text-secondary)] font-mono text-[11px]">
+                  <li>Mencakup <strong>seluruh riwayat transaksi</strong> dari tahun, bulan, & tanggal kapanpun.</li>
+                  <li>Dilengkapi kolom <strong>Saldo Berjalan (Running Balance)</strong> otomatis.</li>
+                  <li><strong>Selalu Realtime</strong>: Cukup buka Google Sheets Anda kapan saja, datanya otomatis sinkron dari database Neon!</li>
+                </ul>
+              </div>
+
+              {/* Step 1: Buka Sheets */}
+              <div className="space-y-1.5">
+                <span className="font-mono text-[11px] uppercase tracking-wider text-[var(--text-muted)] font-semibold">
+                  Langkah 1 — Buka Google Spreadsheet Baru
+                </span>
+                <div>
+                  <a
+                    href="https://sheets.new"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 px-3.5 py-2 rounded-md bg-[var(--surface)] border border-[var(--border)] hover:border-emerald-500/50 text-xs font-mono font-medium text-[var(--text-primary)] transition-colors"
+                  >
+                    <span>Buka sheets.new di Tab Baru</span>
+                    <ExternalLink size={13} className="text-emerald-500" />
+                  </a>
+                </div>
+              </div>
+
+              {/* Step 2: Salin Rumus */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="font-mono text-[11px] uppercase tracking-wider text-[var(--text-muted)] font-semibold">
+                    Langkah 2 — Paste Rumus Ini di Sel A1
+                  </span>
+                  {copiedFormula && (
+                    <span className="font-mono text-[11px] text-emerald-500 font-bold flex items-center gap-1">
+                      <Check size={12} /> Rumus Berhasil Disalin!
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    readOnly
+                    value={sheetsLoading ? "Menghasilkan link aman..." : sheetsData?.formula || ""}
+                    className="technical-input flex-1 px-3 py-2 text-xs font-mono rounded-md bg-[var(--bg-secondary)] select-all truncate"
+                  />
+                  <button
+                    onClick={handleCopyFormula}
+                    disabled={sheetsLoading || !sheetsData?.formula}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-md bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-mono font-semibold transition-colors cursor-pointer shrink-0 disabled:opacity-50"
+                  >
+                    {copiedFormula ? <Check size={13} /> : <Copy size={13} />}
+                    <span>{copiedFormula ? "Tersalin" : "Salin Rumus"}</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Format Preview */}
+              <div className="p-3 rounded-lg border border-[var(--border)] bg-[var(--surface)] space-y-1.5">
+                <div className="flex items-center gap-1.5 font-mono text-[10px] text-[var(--text-muted)] uppercase tracking-wider">
+                  <Layers size={12} />
+                  <span>Struktur Kolom yang Dihasilkan:</span>
+                </div>
+                <p className="font-mono text-[11px] text-[var(--text-secondary)] leading-relaxed">
+                  <code className="text-emerald-500 font-bold">No</code> | <code className="text-emerald-500 font-bold">Tanggal</code> | <code className="text-emerald-500 font-bold">Tipe</code> | <code className="text-emerald-500 font-bold">Pemasukan</code> | <code className="text-emerald-500 font-bold">Pengeluaran</code> | <code className="text-emerald-500 font-bold">Nominal Bersih</code> | <code className="text-emerald-500 font-bold">Saldo Berjalan</code> | <code className="text-emerald-500 font-bold">Deskripsi</code>
+                </p>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="pt-3 border-t border-[var(--border)] flex items-center justify-between text-xs font-mono">
+              <button
+                onClick={handleExportCSV}
+                className="text-[var(--text-muted)] hover:text-[var(--text-primary)] underline underline-offset-4 cursor-pointer"
+              >
+                Unduh file CSV offline biasa
+              </button>
+              <button
+                onClick={() => setIsSheetsModalOpen(false)}
+                className="px-4 py-1.5 rounded-md bg-[var(--text-primary)] text-[var(--bg)] font-medium cursor-pointer"
+              >
+                Tutup
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================== */}
+      {/* MODAL: TAMBAH TRANSAKSI */}
+      {/* ============================================================== */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in">
           <div className="technical-card w-full max-w-md rounded-2xl p-6 shadow-2xl relative">
