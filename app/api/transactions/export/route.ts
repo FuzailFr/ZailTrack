@@ -2,6 +2,15 @@ import { NextResponse } from "next/server";
 import { getSessionUser } from "@/lib/auth";
 import { getDb } from "@/lib/db";
 
+function sanitizeCell(val: string): string {
+  if (!val) return '""';
+  let str = String(val).trim();
+  if (/^[=+\-@\t\r]/.test(str)) {
+    str = "'" + str;
+  }
+  return `"${str.replace(/"/g, '""')}"`;
+}
+
 export async function GET(request: Request) {
   try {
     const session = await getSessionUser();
@@ -18,7 +27,14 @@ export async function GET(request: Request) {
 
     if (month && year && month !== "all" && year !== "all") {
       rows = await sql`
-        SELECT TO_CHAR(tanggal, 'YYYY-MM-DD') AS tanggal, tipe, jumlah, deskripsi
+        SELECT 
+          TO_CHAR(tanggal, 'DD/MM/YYYY') AS tanggal_formatted,
+          TO_CHAR(tanggal, 'DD') AS hari,
+          TO_CHAR(tanggal, 'MM') AS bulan,
+          TO_CHAR(tanggal, 'YYYY') AS tahun,
+          tipe, 
+          jumlah, 
+          deskripsi
         FROM transactions
         WHERE user_id = ${session.userId}
           AND EXTRACT(MONTH FROM tanggal) = ${parseInt(month, 10)}
@@ -27,22 +43,62 @@ export async function GET(request: Request) {
       `;
     } else {
       rows = await sql`
-        SELECT TO_CHAR(tanggal, 'YYYY-MM-DD') AS tanggal, tipe, jumlah, deskripsi
+        SELECT 
+          TO_CHAR(tanggal, 'DD/MM/YYYY') AS tanggal_formatted,
+          TO_CHAR(tanggal, 'DD') AS hari,
+          TO_CHAR(tanggal, 'MM') AS bulan,
+          TO_CHAR(tanggal, 'YYYY') AS tahun,
+          tipe, 
+          jumlah, 
+          deskripsi
         FROM transactions
         WHERE user_id = ${session.userId}
         ORDER BY tanggal ASC, id ASC
       `;
     }
 
-    // Buat format CSV dengan escaping standar
-    const headers = ["No", "Tanggal", "Tipe", "Nominal (IDR)", "Deskripsi"];
+    const headers = [
+      "No",
+      "Tanggal (DD/MM/YYYY)",
+      "Hari",
+      "Bulan",
+      "Tahun",
+      "Kategori",
+      "Pemasukan (IDR)",
+      "Pengeluaran (IDR)",
+      "Nominal Bersih (IDR)",
+      "Saldo Berjalan (IDR)",
+      "Keterangan / Deskripsi",
+    ];
+
+    let runningBalance = 0;
     const csvLines = [headers.join(",")];
 
     rows.forEach((row, index) => {
-      const tipeLabel = row.tipe === "income" ? "Pemasukan" : "Pengeluaran";
-      const sanitizedDesc = `"${(row.deskripsi || "").replace(/"/g, '""')}"`;
+      const jumlah = Number(row.jumlah);
+      const isIncome = row.tipe === "income";
+      const pemasukan = isIncome ? jumlah : 0;
+      const pengeluaran = !isIncome ? jumlah : 0;
+      const nominalBersih = isIncome ? jumlah : -jumlah;
+      runningBalance += nominalBersih;
+
+      const kategori = isIncome ? "PEMASUKAN" : "PENGELUARAN";
+      const sanitizedDesc = sanitizeCell(row.deskripsi || "-");
+
       csvLines.push(
-        `${index + 1},${row.tanggal},${tipeLabel},${row.jumlah},${sanitizedDesc}`
+        [
+          index + 1,
+          `="${row.tanggal_formatted}"`,
+          `="${row.hari}"`,
+          `="${row.bulan}"`,
+          `="${row.tahun}"`,
+          kategori,
+          pemasukan,
+          pengeluaran,
+          nominalBersih,
+          runningBalance,
+          sanitizedDesc,
+        ].join(",")
       );
     });
 

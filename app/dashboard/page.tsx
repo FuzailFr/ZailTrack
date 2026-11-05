@@ -927,7 +927,7 @@ export default function DashboardPage() {
                   <span>Struktur Kolom yang Dihasilkan:</span>
                 </div>
                 <p className="font-mono text-[11px] text-[var(--text-secondary)] leading-relaxed">
-                  <code className="text-emerald-500 font-bold">No</code> | <code className="text-emerald-500 font-bold">Tanggal</code> | <code className="text-emerald-500 font-bold">Tipe</code> | <code className="text-emerald-500 font-bold">Pemasukan</code> | <code className="text-emerald-500 font-bold">Pengeluaran</code> | <code className="text-emerald-500 font-bold">Nominal Bersih</code> | <code className="text-emerald-500 font-bold">Saldo Berjalan</code> | <code className="text-emerald-500 font-bold">Deskripsi</code>
+                  <code className="text-emerald-500 font-bold">No</code> | <code className="text-emerald-500 font-bold">Tanggal (DD/MM/YYYY)</code> | <code className="text-emerald-500 font-bold">Hari</code> | <code className="text-emerald-500 font-bold">Bulan</code> | <code className="text-emerald-500 font-bold">Tahun</code> | <code className="text-emerald-500 font-bold">Kategori</code> | <code className="text-emerald-500 font-bold">Pemasukan</code> | <code className="text-emerald-500 font-bold">Pengeluaran</code> | <code className="text-emerald-500 font-bold">Nominal Bersih</code> | <code className="text-emerald-500 font-bold">Saldo Berjalan</code> | <code className="text-emerald-500 font-bold">Keterangan</code>
                 </p>
               </div>
             </div>

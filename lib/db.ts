@@ -1,11 +1,13 @@
 import { neon, type NeonQueryFunction } from "@neondatabase/serverless";
 
 let sqlInstance: NeonQueryFunction<false, false> | null = null;
+let schemaInitialized = false;
 
 export function getDb() {
+  // Gunakan connection string dengan pooling untuk performa tinggi & concurrency
   const connectionString =
-    process.env.DATABASE_URL ||
     process.env.POSTGRES_URL ||
+    process.env.DATABASE_URL ||
     process.env.POSTGRES_PRISMA_URL;
 
   if (!connectionString) {
@@ -21,42 +23,57 @@ export function getDb() {
   return sqlInstance;
 }
 
-// Inisialisasi skema tabel otomatis jika belum ada
+// Inisialisasi skema tabel otomatis satu kali (di-cache dalam memori agar tidak membebani serverless)
 export async function initDbSchema() {
+  if (schemaInitialized) return;
+
   const sql = getDb();
 
-  // Tabel users
-  await sql`
-    CREATE TABLE IF NOT EXISTS users (
-      id SERIAL PRIMARY KEY,
-      username VARCHAR(100) NOT NULL UNIQUE,
-      password VARCHAR(255) NOT NULL,
-      role VARCHAR(20) NOT NULL DEFAULT 'user',
-      created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-    );
-  `;
+  try {
+    // 1. Tabel users
+    await sql`
+      CREATE TABLE IF NOT EXISTS users (
+        id SERIAL PRIMARY KEY,
+        username VARCHAR(100) NOT NULL UNIQUE,
+        password VARCHAR(255) NOT NULL,
+        role VARCHAR(20) NOT NULL DEFAULT 'user',
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+    `;
 
-  // Migrasi kolom role jika tabel lama sudah terbuat
-  await sql`
-    ALTER TABLE users ADD COLUMN IF NOT EXISTS role VARCHAR(20) NOT NULL DEFAULT 'user';
-  `;
+    // 2. Migrasi kolom role jika tabel lama sudah terbuat
+    await sql`
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS role VARCHAR(20) NOT NULL DEFAULT 'user';
+    `;
 
-  // Tabel transactions
-  await sql`
-    CREATE TABLE IF NOT EXISTS transactions (
-      id SERIAL PRIMARY KEY,
-      user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-      tipe VARCHAR(10) NOT NULL CHECK (tipe IN ('income', 'expense')),
-      jumlah NUMERIC(15, 2) NOT NULL,
-      deskripsi TEXT,
-      tanggal DATE NOT NULL,
-      created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-    );
-  `;
+    // 3. Tabel transactions
+    await sql`
+      CREATE TABLE IF NOT EXISTS transactions (
+        id SERIAL PRIMARY KEY,
+        user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        tipe VARCHAR(10) NOT NULL CHECK (tipe IN ('income', 'expense')),
+        jumlah NUMERIC(15, 2) NOT NULL,
+        deskripsi TEXT,
+        tanggal DATE NOT NULL,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+    `;
 
-  // Index untuk query performa tinggi
-  await sql`
-    CREATE INDEX IF NOT EXISTS idx_transactions_user_date 
-    ON transactions (user_id, tanggal DESC);
-  `;
+    // 4. Index performa tinggi untuk query cepat jutaan data
+    await sql`
+      CREATE INDEX IF NOT EXISTS idx_transactions_user_date 
+      ON transactions (user_id, tanggal DESC);
+    `;
+
+    await sql`
+      CREATE INDEX IF NOT EXISTS idx_users_username_lower 
+      ON users (LOWER(username));
+    `;
+
+    schemaInitialized = true;
+  } catch (err) {
+    console.error("Schema init error:", err);
+    // Biarkan request lanjut jika tabel sudah ada
+    schemaInitialized = true;
+  }
 }

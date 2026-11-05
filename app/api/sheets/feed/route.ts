@@ -2,6 +2,17 @@ import { NextResponse } from "next/server";
 import { verifyFeedToken } from "@/lib/auth";
 import { getDb, initDbSchema } from "@/lib/db";
 
+// Proteksi Anti-Hack: Formula / CSV Injection Sanitizer (OWASP Standard)
+function sanitizeCell(val: string): string {
+  if (!val) return '""';
+  let str = String(val).trim();
+  // Jika karakter pertama adalah simbol formula spreadsheet, netralkan dengan tanda kutip tunggal
+  if (/^[=+\-@\t\r]/.test(str)) {
+    str = "'" + str;
+  }
+  return `"${str.replace(/"/g, '""')}"`;
+}
+
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -16,7 +27,7 @@ export async function GET(request: Request) {
 
     const payload = await verifyFeedToken(token);
     if (!payload) {
-      return new NextResponse("Error: Token Google Sheets tidak valid atau sudah kedaluwarsa.", {
+      return new NextResponse("Error: Token tidak valid atau sesi telah berakhir.", {
         status: 401,
         headers: { "Content-Type": "text/plain; charset=utf-8" },
       });
@@ -25,31 +36,35 @@ export async function GET(request: Request) {
     await initDbSchema();
     const sql = getDb();
 
-    // Ambil SEMUA data transaksi pengguna dari tanggal kapanpun (urut kronologis dari awal ke terbaru)
+    // Ambil SEMUA transaksi pengguna terurut kronologis dari awal sampai terbaru
     const rows = await sql`
       SELECT 
         id,
         tipe,
         jumlah,
         deskripsi,
-        TO_CHAR(tanggal, 'YYYY-MM-DD') AS tanggal,
-        TO_CHAR(created_at, 'YYYY-MM-DD HH24:MI:SS') AS created_at
+        TO_CHAR(tanggal, 'DD') AS hari,
+        TO_CHAR(tanggal, 'MM') AS bulan,
+        TO_CHAR(tanggal, 'YYYY') AS tahun,
+        TO_CHAR(tanggal, 'DD/MM/YYYY') AS tanggal_formatted
       FROM transactions
       WHERE user_id = ${payload.userId}
       ORDER BY tanggal ASC, id ASC
     `;
 
-    // Susun header yang rapi, informatif, dan mudah dianalisis
+    // Kolom terpisah yang sangat jelas, rapi, dan mudah dibaca tanpa jam
     const headers = [
       "No",
-      "Tanggal",
-      "Tipe",
+      "Tanggal (DD/MM/YYYY)",
+      "Hari",
+      "Bulan",
+      "Tahun",
+      "Kategori",
       "Pemasukan (IDR)",
       "Pengeluaran (IDR)",
       "Nominal Bersih (IDR)",
       "Saldo Berjalan (IDR)",
       "Keterangan / Deskripsi",
-      "Waktu Pencatatan",
     ];
 
     let runningBalance = 0;
@@ -65,20 +80,28 @@ export async function GET(request: Request) {
 
       runningBalance += nominalBersih;
 
-      const cleanDesc = `"${(row.deskripsi || "-").replace(/"/g, '""')}"`;
-      const tipeLabel = isIncome ? "PEMASUKAN (+)" : "PENGELUARAN (-)";
+      const kategori = isIncome ? "PEMASUKAN" : "PENGELUARAN";
+      const sanitizedDesc = sanitizeCell(row.deskripsi || "-");
+
+      // Format formula literal ="DD/MM/YYYY" agar Google Sheets tidak mengubahnya jadi angka serial 46331
+      const tanggalCell = `="${row.tanggal_formatted}"`;
+      const hariCell = `="${row.hari}"`;
+      const bulanCell = `="${row.bulan}"`;
+      const tahunCell = `="${row.tahun}"`;
 
       csvLines.push(
         [
           index + 1,
-          row.tanggal,
-          tipeLabel,
+          tanggalCell,
+          hariCell,
+          bulanCell,
+          tahunCell,
+          kategori,
           pemasukan,
           pengeluaran,
           nominalBersih,
           runningBalance,
-          cleanDesc,
-          row.created_at,
+          sanitizedDesc,
         ].join(",")
       );
     });
@@ -95,7 +118,7 @@ export async function GET(request: Request) {
       },
     });
   } catch (error: any) {
-    console.error("Feed error:", error);
+    console.error("Sheets feed error:", error);
     return new NextResponse("Error: Gagal memproses feed data: " + error.message, {
       status: 500,
       headers: { "Content-Type": "text/plain; charset=utf-8" },

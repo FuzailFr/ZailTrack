@@ -26,39 +26,42 @@ export async function GET(request: Request) {
       const monthNum = parseInt(month, 10);
       const yearNum = parseInt(year, 10);
 
-      transactions = await sql`
-        SELECT id, tipe, jumlah, deskripsi, TO_CHAR(tanggal, 'YYYY-MM-DD') AS tanggal, created_at
-        FROM transactions
-        WHERE user_id = ${session.userId}
-          AND EXTRACT(MONTH FROM tanggal) = ${monthNum}
-          AND EXTRACT(YEAR FROM tanggal) = ${yearNum}
-        ORDER BY tanggal DESC, id DESC
-      `;
-
-      summary = await sql`
-        SELECT 
-          COALESCE(SUM(CASE WHEN tipe = 'income' THEN jumlah ELSE 0 END), 0) AS total_income,
-          COALESCE(SUM(CASE WHEN tipe = 'expense' THEN jumlah ELSE 0 END), 0) AS total_expense
-        FROM transactions
-        WHERE user_id = ${session.userId}
-          AND EXTRACT(MONTH FROM tanggal) = ${monthNum}
-          AND EXTRACT(YEAR FROM tanggal) = ${yearNum}
-      `;
+      // Jalankan query transaksi dan kalkulasi summary secara paralel untuk performa maksimal
+      [transactions, summary] = await Promise.all([
+        sql`
+          SELECT id, tipe, jumlah, deskripsi, TO_CHAR(tanggal, 'YYYY-MM-DD') AS tanggal, created_at
+          FROM transactions
+          WHERE user_id = ${session.userId}
+            AND EXTRACT(MONTH FROM tanggal) = ${monthNum}
+            AND EXTRACT(YEAR FROM tanggal) = ${yearNum}
+          ORDER BY tanggal DESC, id DESC
+        `,
+        sql`
+          SELECT 
+            COALESCE(SUM(CASE WHEN tipe = 'income' THEN jumlah ELSE 0 END), 0) AS total_income,
+            COALESCE(SUM(CASE WHEN tipe = 'expense' THEN jumlah ELSE 0 END), 0) AS total_expense
+          FROM transactions
+          WHERE user_id = ${session.userId}
+            AND EXTRACT(MONTH FROM tanggal) = ${monthNum}
+            AND EXTRACT(YEAR FROM tanggal) = ${yearNum}
+        `
+      ]);
     } else {
-      transactions = await sql`
-        SELECT id, tipe, jumlah, deskripsi, TO_CHAR(tanggal, 'YYYY-MM-DD') AS tanggal, created_at
-        FROM transactions
-        WHERE user_id = ${session.userId}
-        ORDER BY tanggal DESC, id DESC
-      `;
-
-      summary = await sql`
-        SELECT 
-          COALESCE(SUM(CASE WHEN tipe = 'income' THEN jumlah ELSE 0 END), 0) AS total_income,
-          COALESCE(SUM(CASE WHEN tipe = 'expense' THEN jumlah ELSE 0 END), 0) AS total_expense
-        FROM transactions
-        WHERE user_id = ${session.userId}
-      `;
+      [transactions, summary] = await Promise.all([
+        sql`
+          SELECT id, tipe, jumlah, deskripsi, TO_CHAR(tanggal, 'YYYY-MM-DD') AS tanggal, created_at
+          FROM transactions
+          WHERE user_id = ${session.userId}
+          ORDER BY tanggal DESC, id DESC
+        `,
+        sql`
+          SELECT 
+            COALESCE(SUM(CASE WHEN tipe = 'income' THEN jumlah ELSE 0 END), 0) AS total_income,
+            COALESCE(SUM(CASE WHEN tipe = 'expense' THEN jumlah ELSE 0 END), 0) AS total_expense
+          FROM transactions
+          WHERE user_id = ${session.userId}
+        `
+      ]);
     }
 
     const totalIncome = Number(summary[0]?.total_income || 0);
