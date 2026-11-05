@@ -4,7 +4,6 @@ let sqlInstance: NeonQueryFunction<false, false> | null = null;
 let schemaInitialized = false;
 
 export function getDb() {
-  // Gunakan connection string dengan pooling untuk performa tinggi & concurrency
   const connectionString =
     process.env.POSTGRES_URL ||
     process.env.DATABASE_URL ||
@@ -23,7 +22,7 @@ export function getDb() {
   return sqlInstance;
 }
 
-// Inisialisasi skema tabel otomatis satu kali (di-cache dalam memori agar tidak membebani serverless)
+// Inisialisasi skema tabel otomatis satu kali
 export async function initDbSchema() {
   if (schemaInitialized) return;
 
@@ -37,13 +36,21 @@ export async function initDbSchema() {
         username VARCHAR(100) NOT NULL UNIQUE,
         password VARCHAR(255) NOT NULL,
         role VARCHAR(20) NOT NULL DEFAULT 'user',
+        telegram_chat_id BIGINT UNIQUE,
+        telegram_link_code VARCHAR(32) UNIQUE,
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       );
     `;
 
-    // 2. Migrasi kolom role jika tabel lama sudah terbuat
+    // 2. Migrasi kolom role & telegram jika tabel lama sudah terbuat
     await sql`
       ALTER TABLE users ADD COLUMN IF NOT EXISTS role VARCHAR(20) NOT NULL DEFAULT 'user';
+    `;
+    await sql`
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS telegram_chat_id BIGINT UNIQUE;
+    `;
+    await sql`
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS telegram_link_code VARCHAR(32) UNIQUE;
     `;
 
     // 3. Tabel transactions
@@ -59,7 +66,7 @@ export async function initDbSchema() {
       );
     `;
 
-    // 4. Index performa tinggi untuk query cepat jutaan data
+    // 4. Index performa tinggi
     await sql`
       CREATE INDEX IF NOT EXISTS idx_transactions_user_date 
       ON transactions (user_id, tanggal DESC);
@@ -70,10 +77,14 @@ export async function initDbSchema() {
       ON users (LOWER(username));
     `;
 
+    await sql`
+      CREATE INDEX IF NOT EXISTS idx_users_telegram_chat_id 
+      ON users (telegram_chat_id);
+    `;
+
     schemaInitialized = true;
   } catch (err) {
     console.error("Schema init error:", err);
-    // Biarkan request lanjut jika tabel sudah ada
     schemaInitialized = true;
   }
 }

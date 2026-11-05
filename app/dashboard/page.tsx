@@ -27,6 +27,9 @@ import {
   Check,
   Layers,
   Sparkles,
+  Bot,
+  Send,
+  Unlink,
 } from "lucide-react";
 import ThemeToggle from "@/components/ThemeToggle";
 
@@ -69,6 +72,13 @@ interface DevAuditItem {
   tanggal: string;
   created_at: string;
   username: string;
+}
+
+interface TelegramLinkData {
+  is_linked: boolean;
+  telegram_chat_id: number | null;
+  bot_username: string;
+  deep_link: string | null;
 }
 
 const MONTHS = [
@@ -130,6 +140,12 @@ export default function DashboardPage() {
   const [sheetsLoading, setSheetsLoading] = useState(false);
   const [sheetsData, setSheetsData] = useState<{ feedUrl: string; formula: string } | null>(null);
   const [copiedFormula, setCopiedFormula] = useState(false);
+
+  // Modal State: Telegram Bot
+  const [isTelegramModalOpen, setIsTelegramModalOpen] = useState(false);
+  const [telegramLoading, setTelegramLoading] = useState(false);
+  const [telegramData, setTelegramData] = useState<TelegramLinkData | null>(null);
+  const [unlinkingTelegram, setUnlinkingTelegram] = useState(false);
 
   // Dev Mode State
   const [devMetrics, setDevMetrics] = useState<DevMetrics | null>(null);
@@ -247,6 +263,37 @@ export default function DashboardPage() {
     navigator.clipboard.writeText(sheetsData.formula);
     setCopiedFormula(true);
     setTimeout(() => setCopiedFormula(false), 2000);
+  };
+
+  // 5. Open Telegram Modal & Fetch Link
+  const handleOpenTelegramModal = async () => {
+    setIsTelegramModalOpen(true);
+    setTelegramLoading(true);
+    try {
+      const res = await fetch("/api/telegram/link");
+      if (res.ok) {
+        const data = await res.json();
+        setTelegramData(data);
+      }
+    } catch (err) {
+      console.error("Gagal memuat info Telegram", err);
+    } finally {
+      setTelegramLoading(false);
+    }
+  };
+
+  const handleUnlinkTelegram = async () => {
+    setUnlinkingTelegram(true);
+    try {
+      const res = await fetch("/api/telegram/link", { method: "DELETE" });
+      if (res.ok) {
+        setTelegramData((prev) => (prev ? { ...prev, is_linked: false, telegram_chat_id: null } : null));
+        // Refresh info link baru
+        handleOpenTelegramModal();
+      }
+    } finally {
+      setUnlinkingTelegram(false);
+    }
   };
 
   // Logout
@@ -708,18 +755,31 @@ export default function DashboardPage() {
                 </select>
               </div>
 
-              {/* Action Buttons: Google Sheets Realtime & Tambah Transaksi */}
+              {/* Action Buttons: Telegram Bot, Google Sheets, & Tambah Transaksi */}
               <div className="flex flex-wrap items-center gap-2.5">
+                {/* Tombol Telegram Bot */}
+                <button
+                  onClick={handleOpenTelegramModal}
+                  type="button"
+                  className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-3.5 py-2 rounded-md border border-sky-500/30 bg-sky-500/10 text-xs font-mono font-semibold text-sky-500 hover:bg-sky-500/20 transition-colors cursor-pointer shadow-xs"
+                  title="Hubungkan akun Telegram untuk mencatat transaksi kilat tanpa buka web"
+                >
+                  <Bot size={15} className="text-sky-500 shrink-0" />
+                  <span>Telegram Bot</span>
+                </button>
+
+                {/* Tombol Google Sheets */}
                 <button
                   onClick={handleOpenSheetsModal}
                   type="button"
                   className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-3.5 py-2 rounded-md border border-emerald-500/30 bg-emerald-500/10 text-xs font-mono font-semibold text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 transition-colors cursor-pointer shadow-xs"
-                  title="Hubungkan seluruh data secara realtime ke Google Spreadsheets tanpa download manual"
+                  title="Hubungkan seluruh data secara realtime ke Google Spreadsheets"
                 >
                   <FileSpreadsheet size={15} className="text-emerald-500 shrink-0" />
-                  <span>Google Sheets (Realtime)</span>
+                  <span>Google Sheets</span>
                 </button>
 
+                {/* Tombol Tambah Transaksi Manual */}
                 <button
                   onClick={() => setIsModalOpen(true)}
                   type="button"
@@ -772,7 +832,7 @@ export default function DashboardPage() {
                               Belum ada transaksi pada periode ini
                             </p>
                             <p className="text-[11px]">
-                              Klik tombol &quot;Tambah Transaksi&quot; di atas untuk mulai mencatat pemasukan atau pengeluaran.
+                              Klik tombol &quot;Tambah Transaksi&quot; atau kirim chat ke bot Telegram Anda untuk mulai mencatat.
                             </p>
                           </div>
                         </td>
@@ -831,12 +891,130 @@ export default function DashboardPage() {
       </main>
 
       {/* ============================================================== */}
+      {/* MODAL: TELEGRAM BOT QUICK-ENTRY */}
+      {/* ============================================================== */}
+      {isTelegramModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in">
+          <div className="technical-card w-full max-w-lg rounded-2xl p-6 shadow-2xl relative space-y-5">
+            <div className="flex items-center justify-between pb-3 border-b border-[var(--border)]">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-lg bg-sky-500/10 text-sky-500 border border-sky-500/20">
+                  <Bot size={20} />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold">Catat Kilat via Telegram Bot</h3>
+                  <p className="text-[11px] font-mono text-[var(--text-muted)]">
+                    Sinkronisasi instan ke web & Google Sheets dari chat
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsTelegramModalOpen(false)}
+                className="p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] rounded cursor-pointer"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {telegramLoading ? (
+              <div className="py-8 flex flex-col items-center justify-center gap-2 text-xs font-mono text-[var(--text-muted)]">
+                <div className="w-5 h-5 border-2 border-sky-500 border-t-transparent rounded-full animate-spin" />
+                <span>Memeriksa status Telegram...</span>
+              </div>
+            ) : telegramData?.is_linked ? (
+              <div className="space-y-4 text-xs font-mono">
+                <div className="p-3.5 rounded-lg border border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 space-y-1">
+                  <div className="flex items-center gap-2 font-bold">
+                    <Check size={15} />
+                    <span>Akun Telegram Anda Sudah Terhubung!</span>
+                  </div>
+                  <p className="text-[11px] opacity-90">
+                    ID Chat: <code>{telegramData.telegram_chat_id}</code> | Bot: <code>@{telegramData.bot_username}</code>
+                  </p>
+                </div>
+
+                <div className="p-3.5 rounded-lg border border-[var(--border)] bg-[var(--bg-secondary)] space-y-2">
+                  <span className="font-bold text-[var(--text-primary)] block">Cara Mencatat Transaksi di Telegram:</span>
+                  <div className="space-y-1 text-[11px] text-[var(--text-secondary)]">
+                    <p>• <code>keluar 25000 kopi susu</code> ➔ Pengeluaran Rp 25.000</p>
+                    <p>• <code>masuk 500k freelance</code> ➔ Pemasukan Rp 500.000</p>
+                    <p>• <code>beli bensin 35rb</code> ➔ Pengeluaran Rp 35.000</p>
+                    <p>• <code>-15000 parkir</code> ➔ Pengeluaran Rp 15.000</p>
+                    <p>• <code>+1.5jt honor</code> ➔ Pemasukan Rp 1.500.000</p>
+                  </div>
+                </div>
+
+                <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-3">
+                  <button
+                    onClick={handleUnlinkTelegram}
+                    disabled={unlinkingTelegram}
+                    className="inline-flex items-center gap-1.5 text-xs text-rose-500 hover:text-rose-600 underline cursor-pointer disabled:opacity-50"
+                  >
+                    <Unlink size={13} />
+                    <span>{unlinkingTelegram ? "Memutuskan..." : "Putuskan Sambungan Telegram"}</span>
+                  </button>
+
+                  <a
+                    href={`https://t.me/${telegramData.bot_username}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-md bg-sky-500 hover:bg-sky-400 text-white font-semibold transition-colors"
+                  >
+                    <Send size={13} />
+                    <span>Buka Chat Telegram Bot</span>
+                  </a>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4 text-xs font-mono">
+                <div className="p-3.5 rounded-lg border border-[var(--border)] bg-[var(--bg-secondary)] space-y-2">
+                  <p className="text-[var(--text-secondary)] leading-relaxed">
+                    Hubungkan akun Telegram Anda untuk mulai mencatat pengeluaran atau pemasukan secara kilat tanpa repot membuka browser laptop atau HP.
+                  </p>
+                  <ul className="list-disc list-inside space-y-1 text-[11px] text-[var(--text-muted)]">
+                    <li>Kirim chat transaksi, langsung tersimpan ke database Neon.</li>
+                    <li>Otomatis tersinkron ke dashboard web & Google Sheets.</li>
+                    <li>Mendukung bahasa santai & singkatan angka (k, rb, jt).</li>
+                  </ul>
+                </div>
+
+                <div className="space-y-2">
+                  <span className="font-semibold text-[var(--text-primary)] block">Langkah Menghubungkan:</span>
+                  <a
+                    href={telegramData?.deep_link || `https://t.me/${telegramData?.bot_username}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full inline-flex items-center justify-center gap-2 py-2.5 px-4 rounded-md bg-sky-500 hover:bg-sky-400 text-white font-bold text-xs transition-colors"
+                  >
+                    <Bot size={16} />
+                    <span>Klik Di Sini untuk Buka & Hubungkan Bot</span>
+                    <ExternalLink size={13} />
+                  </a>
+                  <p className="text-[11px] text-center text-[var(--text-muted)]">
+                    Setelah Telegram terbuka, cukup klik tombol <b>START</b> di bagian bawah chat bot.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            <div className="pt-3 border-t border-[var(--border)] flex justify-end text-xs font-mono">
+              <button
+                onClick={() => setIsTelegramModalOpen(false)}
+                className="px-4 py-1.5 rounded-md bg-[var(--text-primary)] text-[var(--bg)] font-medium cursor-pointer"
+              >
+                Tutup
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================== */}
       {/* MODAL: SINKRONISASI REALTIME GOOGLE SPREADSHEETS */}
       {/* ============================================================== */}
       {isSheetsModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in">
           <div className="technical-card w-full max-w-xl rounded-2xl p-6 shadow-2xl relative space-y-5">
-            {/* Modal Header */}
             <div className="flex items-center justify-between pb-3 border-b border-[var(--border)]">
               <div className="flex items-center gap-2.5">
                 <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
@@ -857,7 +1035,6 @@ export default function DashboardPage() {
               </button>
             </div>
 
-            {/* Explanation & Steps */}
             <div className="space-y-4 text-xs">
               <div className="p-3.5 rounded-lg border border-[var(--border)] bg-[var(--bg-secondary)] space-y-2">
                 <div className="flex items-center gap-2 font-semibold text-[var(--text-primary)]">
@@ -867,11 +1044,10 @@ export default function DashboardPage() {
                 <ul className="list-disc list-inside space-y-1 text-[var(--text-secondary)] font-mono text-[11px]">
                   <li>Mencakup <strong>seluruh riwayat transaksi</strong> dari tahun, bulan, & tanggal kapanpun.</li>
                   <li>Dilengkapi kolom <strong>Saldo Berjalan (Running Balance)</strong> otomatis.</li>
-                  <li><strong>Selalu Realtime</strong>: Cukup buka Google Sheets Anda kapan saja, datanya otomatis sinkron dari database Neon!</li>
+                  <li><strong>Nominal Jelas</strong>: Format Rupiah lengkap (contoh: <code>Rp 1.000.000</code>).</li>
                 </ul>
               </div>
 
-              {/* Step 1: Buka Sheets */}
               <div className="space-y-1.5">
                 <span className="font-mono text-[11px] uppercase tracking-wider text-[var(--text-muted)] font-semibold">
                   Langkah 1 — Buka Google Spreadsheet Baru
@@ -889,7 +1065,6 @@ export default function DashboardPage() {
                 </div>
               </div>
 
-              {/* Step 2: Salin Rumus */}
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
                   <span className="font-mono text-[11px] uppercase tracking-wider text-[var(--text-muted)] font-semibold">
@@ -920,7 +1095,6 @@ export default function DashboardPage() {
                 </div>
               </div>
 
-              {/* Format Preview */}
               <div className="p-3 rounded-lg border border-[var(--border)] bg-[var(--surface)] space-y-1.5">
                 <div className="flex items-center gap-1.5 font-mono text-[10px] text-[var(--text-muted)] uppercase tracking-wider">
                   <Layers size={12} />
@@ -932,7 +1106,6 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            {/* Modal Footer */}
             <div className="pt-3 border-t border-[var(--border)] flex items-center justify-between text-xs font-mono">
               <button
                 onClick={handleExportCSV}
@@ -952,7 +1125,7 @@ export default function DashboardPage() {
       )}
 
       {/* ============================================================== */}
-      {/* MODAL: TAMBAH TRANSAKSI */}
+      {/* MODAL: TAMBAH TRANSAKSI MANUAL */}
       {/* ============================================================== */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in">
