@@ -2,11 +2,9 @@ import { NextResponse } from "next/server";
 import { verifyFeedToken } from "@/lib/auth";
 import { getDb, initDbSchema } from "@/lib/db";
 
-// Bersihkan teks agar tidak merusak format CSV dan aman dari formula injection
 function cleanCsvText(val: string): string {
   if (!val) return '""';
   let str = String(val).trim();
-  // Netralkan jika diawali karakter formula spreadsheet berbahaya
   if (/^[=+\-@\t\r]/.test(str)) {
     str = "'" + str;
   }
@@ -43,21 +41,27 @@ export async function GET(request: Request) {
         tipe,
         jumlah,
         deskripsi,
-        TO_CHAR(tanggal, 'DD/MM/YYYY') AS tanggal_formatted
+        TO_CHAR(tanggal, 'DD/MM/YYYY') AS tanggal_formatted,
+        TO_CHAR(tanggal, 'DD') AS hari,
+        TO_CHAR(tanggal, 'MM') AS bulan,
+        TO_CHAR(tanggal, 'YYYY') AS tahun
       FROM transactions
       WHERE user_id = ${payload.userId}
       ORDER BY tanggal ASC, id ASC
     `;
 
-    // 8 Kolom Standar Keuangan: Bersih, Rapi, Tanpa Jam, Tanpa Formula Aneh
+    // 11 Kolom Lengkap, Rapi, Bersih Tanpa Jam & Tanpa Tanda Kutip Berantakan
     const headers = [
       "No",
       "Tanggal",
+      "Hari",
+      "Bulan",
+      "Tahun",
       "Kategori",
-      "Pemasukan (IDR)",
-      "Pengeluaran (IDR)",
-      "Saldo Bersih (IDR)",
-      "Saldo Akumulasi (IDR)",
+      "Pemasukan (Rp)",
+      "Pengeluaran (Rp)",
+      "Nominal Bersih (Rp)",
+      "Saldo Berjalan (Rp)",
       "Keterangan",
     ];
 
@@ -70,22 +74,24 @@ export async function GET(request: Request) {
 
       const pemasukan = isIncome ? jumlah : 0;
       const pengeluaran = !isIncome ? jumlah : 0;
-      const saldoBersih = isIncome ? jumlah : -jumlah;
+      const nominalBersih = isIncome ? jumlah : -jumlah;
 
-      runningBalance += saldoBersih;
+      runningBalance += nominalBersih;
 
       const kategori = isIncome ? "PEMASUKAN" : "PENGELUARAN";
       const keterangan = cleanCsvText(row.deskripsi || "-");
-      const tanggal = row.tanggal_formatted; // Murni string DD/MM/YYYY tanpa tanda kutip ganda/sama dengan
 
       csvLines.push(
         [
           index + 1,
-          tanggal,
+          row.tanggal_formatted,
+          row.hari,
+          row.bulan,
+          row.tahun,
           kategori,
           pemasukan,
           pengeluaran,
-          saldoBersih,
+          nominalBersih,
           runningBalance,
           keterangan,
         ].join(",")

@@ -29,6 +29,9 @@ export async function GET(request: Request) {
       rows = await sql`
         SELECT 
           TO_CHAR(tanggal, 'DD/MM/YYYY') AS tanggal_formatted,
+          TO_CHAR(tanggal, 'DD') AS hari,
+          TO_CHAR(tanggal, 'MM') AS bulan,
+          TO_CHAR(tanggal, 'YYYY') AS tahun,
           tipe, 
           jumlah, 
           deskripsi
@@ -42,6 +45,9 @@ export async function GET(request: Request) {
       rows = await sql`
         SELECT 
           TO_CHAR(tanggal, 'DD/MM/YYYY') AS tanggal_formatted,
+          TO_CHAR(tanggal, 'DD') AS hari,
+          TO_CHAR(tanggal, 'MM') AS bulan,
+          TO_CHAR(tanggal, 'YYYY') AS tahun,
           tipe, 
           jumlah, 
           deskripsi
@@ -54,11 +60,14 @@ export async function GET(request: Request) {
     const headers = [
       "No",
       "Tanggal",
+      "Hari",
+      "Bulan",
+      "Tahun",
       "Kategori",
-      "Pemasukan (IDR)",
-      "Pengeluaran (IDR)",
-      "Saldo Bersih (IDR)",
-      "Saldo Akumulasi (IDR)",
+      "Pemasukan (Rp)",
+      "Pengeluaran (Rp)",
+      "Nominal Bersih (Rp)",
+      "Saldo Berjalan (Rp)",
       "Keterangan",
     ];
 
@@ -70,8 +79,8 @@ export async function GET(request: Request) {
       const isIncome = row.tipe === "income";
       const pemasukan = isIncome ? jumlah : 0;
       const pengeluaran = !isIncome ? jumlah : 0;
-      const saldoBersih = isIncome ? jumlah : -jumlah;
-      runningBalance += saldoBersih;
+      const nominalBersih = isIncome ? jumlah : -jumlah;
+      runningBalance += nominalBersih;
 
       const kategori = isIncome ? "PEMASUKAN" : "PENGELUARAN";
       const keterangan = cleanCsvText(row.deskripsi || "-");
@@ -80,10 +89,13 @@ export async function GET(request: Request) {
         [
           index + 1,
           row.tanggal_formatted,
+          row.hari,
+          row.bulan,
+          row.tahun,
           kategori,
           pemasukan,
           pengeluaran,
-          saldoBersih,
+          nominalBersih,
           runningBalance,
           keterangan,
         ].join(",")

@@ -927,7 +927,7 @@ export default function DashboardPage() {
                   <span>Struktur Kolom yang Dihasilkan:</span>
                 </div>
                 <p className="font-mono text-[11px] text-[var(--text-secondary)] leading-relaxed">
-                  <code className="text-emerald-500 font-bold">No</code> | <code className="text-emerald-500 font-bold">Tanggal</code> | <code className="text-emerald-500 font-bold">Kategori</code> | <code className="text-emerald-500 font-bold">Pemasukan (IDR)</code> | <code className="text-emerald-500 font-bold">Pengeluaran (IDR)</code> | <code className="text-emerald-500 font-bold">Saldo Bersih (IDR)</code> | <code className="text-emerald-500 font-bold">Saldo Akumulasi (IDR)</code> | <code className="text-emerald-500 font-bold">Keterangan</code>
+                  <code className="text-emerald-500 font-bold">No</code> | <code className="text-emerald-500 font-bold">Tanggal</code> | <code className="text-emerald-500 font-bold">Hari</code> | <code className="text-emerald-500 font-bold">Bulan</code> | <code className="text-emerald-500 font-bold">Tahun</code> | <code className="text-emerald-500 font-bold">Kategori</code> | <code className="text-emerald-500 font-bold">Pemasukan (Rp)</code> | <code className="text-emerald-500 font-bold">Pengeluaran (Rp)</code> | <code className="text-emerald-500 font-bold">Nominal Bersih (Rp)</code> | <code className="text-emerald-500 font-bold">Saldo Berjalan (Rp)</code> | <code className="text-emerald-500 font-bold">Keterangan</code>
                 </p>
               </div>
             </div>
