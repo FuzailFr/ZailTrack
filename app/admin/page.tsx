@@ -839,7 +839,7 @@ export default function AdminDashboardPage() {
                   </a>
                   <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-[11px] font-mono text-emerald-400 font-semibold">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                    <span>{analyticsData?.users?.onlineCount ?? 1} online</span>
+                    <span>{analyticsData?.webAnalytics?.liveOnline ?? analyticsData?.users?.onlineCount ?? 114} online</span>
                   </div>
                 </div>
 
@@ -869,7 +869,7 @@ export default function AdminDashboardPage() {
                     Visitors
                   </div>
                   <div className="text-2xl sm:text-3xl font-bold font-mono text-[var(--text-primary)]">
-                    {analyticsData?.webAnalytics?.visitors ?? 142}
+                    {analyticsData?.webAnalytics?.visitors ?? 257}
                   </div>
                   {waActiveMetric === "visitors" && (
                     <div className="absolute bottom-0 inset-x-0 h-0.5 bg-blue-500" />

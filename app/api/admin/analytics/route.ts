@@ -138,7 +138,7 @@ export async function GET(request: Request) {
         SELECT 
           COUNT(DISTINCT COALESCE(session_id, ip_address))::int AS visitors,
           COUNT(*)::int AS page_views,
-          COUNT(DISTINCT COALESCE(session_id, ip_address)) FILTER (WHERE created_at >= NOW() - INTERVAL '5 minutes')::int AS live_visitors
+          COUNT(DISTINCT COALESCE(session_id, ip_address)) FILTER (WHERE created_at >= NOW() - INTERVAL '15 minutes')::int AS live_visitors
         FROM traffic_logs
         WHERE is_page_view = true
       `,
