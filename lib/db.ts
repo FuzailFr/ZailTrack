@@ -135,15 +135,13 @@ export async function initDbSchema() {
     `;
 
     // Pastikan kolom analytics ada pada tabel existing
-    await sql`
-      ALTER TABLE traffic_logs ADD COLUMN IF NOT EXISTS country VARCHAR(100) DEFAULT 'Indonesia';
-      ALTER TABLE traffic_logs ADD COLUMN IF NOT EXISTS country_code VARCHAR(10) DEFAULT 'ID';
-      ALTER TABLE traffic_logs ADD COLUMN IF NOT EXISTS device VARCHAR(50) DEFAULT 'Desktop';
-      ALTER TABLE traffic_logs ADD COLUMN IF NOT EXISTS browser VARCHAR(50) DEFAULT 'Chrome';
-      ALTER TABLE traffic_logs ADD COLUMN IF NOT EXISTS os VARCHAR(50) DEFAULT 'Windows';
-      ALTER TABLE traffic_logs ADD COLUMN IF NOT EXISTS is_page_view BOOLEAN DEFAULT false;
-      ALTER TABLE traffic_logs ADD COLUMN IF NOT EXISTS session_id VARCHAR(64);
-    `;
+    await sql`ALTER TABLE traffic_logs ADD COLUMN IF NOT EXISTS country VARCHAR(100) DEFAULT 'Indonesia'`.catch(() => {});
+    await sql`ALTER TABLE traffic_logs ADD COLUMN IF NOT EXISTS country_code VARCHAR(10) DEFAULT 'ID'`.catch(() => {});
+    await sql`ALTER TABLE traffic_logs ADD COLUMN IF NOT EXISTS device VARCHAR(50) DEFAULT 'Desktop'`.catch(() => {});
+    await sql`ALTER TABLE traffic_logs ADD COLUMN IF NOT EXISTS browser VARCHAR(50) DEFAULT 'Chrome'`.catch(() => {});
+    await sql`ALTER TABLE traffic_logs ADD COLUMN IF NOT EXISTS os VARCHAR(50) DEFAULT 'Windows'`.catch(() => {});
+    await sql`ALTER TABLE traffic_logs ADD COLUMN IF NOT EXISTS is_page_view BOOLEAN DEFAULT false`.catch(() => {});
+    await sql`ALTER TABLE traffic_logs ADD COLUMN IF NOT EXISTS session_id VARCHAR(64)`.catch(() => {});
 
     // 7. Index performa tinggi
     await sql`

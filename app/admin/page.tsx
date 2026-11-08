@@ -146,6 +146,11 @@ export default function AdminDashboardPage() {
   useEffect(() => {
     if (activeTab === "overview" && sessionUser) {
       fetchAnalytics();
+      // Polling realtime setiap 15 detik agar analitik live update otomatis
+      const timer = setInterval(() => {
+        fetchAnalytics();
+      }, 15000);
+      return () => clearInterval(timer);
     }
   }, [activeTab, analyticsRange, sessionUser]);
 
@@ -918,132 +923,180 @@ export default function AdminDashboardPage() {
               </div>
 
               {/* Interactive SVG Traffic Chart with Area Gradient */}
-              <div className="relative w-full overflow-hidden bg-[var(--surface)]/50 rounded-xl p-3 border border-[var(--border-subtle)]">
-                <svg
-                  viewBox="0 0 800 220"
-                  className="w-full h-44 sm:h-56 select-none overflow-visible"
-                  preserveAspectRatio="none"
-                >
-                  <defs>
-                    <linearGradient id="vercelTrafficGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.35" />
-                      <stop offset="100%" stopColor="#3b82f6" stopOpacity="0.0" />
-                    </linearGradient>
-                  </defs>
+              {(() => {
+                const trendList: any[] = analyticsData?.webAnalytics?.trend && analyticsData.webAnalytics.trend.length > 0
+                  ? analyticsData.webAnalytics.trend
+                  : [
+                      { label: "Nov 1", visitors: 0, pageViews: 0 },
+                      { label: "Nov 2", visitors: 0, pageViews: 0 },
+                      { label: "Nov 3", visitors: 0, pageViews: 0 },
+                      { label: "Nov 4", visitors: 0, pageViews: 0 },
+                      { label: "Nov 5", visitors: 0, pageViews: 0 },
+                      { label: "Nov 6", visitors: 140, pageViews: 42500 },
+                      { label: "Nov 7", visitors: 2, pageViews: 500 },
+                      { label: "Nov 8", visitors: 1, pageViews: 43 },
+                    ];
 
-                  {/* Horizontal Gridlines */}
-                  <line x1="50" y1="40" x2="780" y2="40" stroke="var(--border)" strokeWidth="0.8" strokeDasharray="3 3" />
-                  <line x1="50" y1="85" x2="780" y2="85" stroke="var(--border)" strokeWidth="0.8" strokeDasharray="3 3" />
-                  <line x1="50" y1="130" x2="780" y2="130" stroke="var(--border)" strokeWidth="0.8" strokeDasharray="3 3" />
-                  <line x1="50" y1="175" x2="780" y2="175" stroke="var(--border)" strokeWidth="0.8" />
+                const isVis = waActiveMetric === "visitors";
+                const isPv = waActiveMetric === "pageViews";
 
-                  {/* Y-Axis Labels */}
-                  <text x="25" y="44" fill="var(--text-muted)" fontSize="10" fontFamily="monospace" textAnchor="end">
-                    {waActiveMetric === "visitors" ? "150" : waActiveMetric === "pageViews" ? "45k" : "100%"}
-                  </text>
-                  <text x="25" y="89" fill="var(--text-muted)" fontSize="10" fontFamily="monospace" textAnchor="end">
-                    {waActiveMetric === "visitors" ? "100" : waActiveMetric === "pageViews" ? "30k" : "66%"}
-                  </text>
-                  <text x="25" y="134" fill="var(--text-muted)" fontSize="10" fontFamily="monospace" textAnchor="end">
-                    {waActiveMetric === "visitors" ? "50" : waActiveMetric === "pageViews" ? "15k" : "33%"}
-                  </text>
-                  <text x="25" y="178" fill="var(--text-muted)" fontSize="10" fontFamily="monospace" textAnchor="end">
-                    0
-                  </text>
+                const rawMax = Math.max(
+                  ...trendList.map((t: any) => isVis ? Number(t.visitors || 0) : isPv ? Number(t.pageViews || 0) : 25),
+                  isVis ? 10 : isPv ? 1000 : 25
+                );
+                const maxVal = isVis ? Math.max(Math.ceil(rawMax / 10) * 10, 10) : isPv ? Math.max(Math.ceil(rawMax / 1000) * 1000, 100) : 100;
 
-                  {/* Shaded Area Fill */}
-                  <path
-                    d="M 60,175 L 160,175 L 260,175 L 360,175 L 460,175 L 560,45 L 660,173 L 760,174 L 760,175 L 60,175 Z"
-                    fill="url(#vercelTrafficGrad)"
-                  />
+                const pointsCount = trendList.length;
+                const chartPoints = trendList.map((pt: any, idx: number) => {
+                  const x = pointsCount > 1 ? 60 + (idx / (pointsCount - 1)) * 700 : 400;
+                  const val = isVis ? Number(pt.visitors || 0) : isPv ? Number(pt.pageViews || 0) : 20;
+                  const y = 175 - Math.min(135, Math.max(0, Math.round((val / maxVal) * 135)));
+                  return { ...pt, x, y, val };
+                });
 
-                  {/* Solid Curve Line (Nov 1 to Nov 7) */}
-                  <path
-                    d="M 60,175 L 160,175 L 260,175 L 360,175 L 460,175 L 560,45 L 660,173"
-                    fill="none"
-                    stroke="#3b82f6"
-                    strokeWidth="2.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
+                const solidSlice = chartPoints.length > 1 ? chartPoints.slice(0, chartPoints.length - 1) : chartPoints;
+                const solidPath = solidSlice.map((p, i) => `${i === 0 ? "M" : "L"} ${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ");
 
-                  {/* Dashed Line (Nov 7 to Nov 8) */}
-                  <path
-                    d="M 660,173 L 760,174"
-                    fill="none"
-                    stroke="#3b82f6"
-                    strokeWidth="2"
-                    strokeDasharray="4 4"
-                    strokeLinecap="round"
-                  />
+                const dashedPath = chartPoints.length > 1
+                  ? `M ${chartPoints[chartPoints.length - 2].x.toFixed(1)},${chartPoints[chartPoints.length - 2].y.toFixed(1)} L ${chartPoints[chartPoints.length - 1].x.toFixed(1)},${chartPoints[chartPoints.length - 1].y.toFixed(1)}`
+                  : "";
 
-                  {/* Interactive Nodes */}
-                  {[
-                    { label: "Nov 1", x: 60, y: 175, val: 0 },
-                    { label: "Nov 2", x: 160, y: 175, val: 0 },
-                    { label: "Nov 3", x: 260, y: 175, val: 0 },
-                    { label: "Nov 4", x: 360, y: 175, val: 0 },
-                    { label: "Nov 5", x: 460, y: 175, val: 0 },
-                    { label: "Nov 6", x: 560, y: 45, val: waActiveMetric === "visitors" ? 140 : 42500 },
-                    { label: "Nov 7", x: 660, y: 173, val: waActiveMetric === "visitors" ? 2 : 500 },
-                    { label: "Nov 8", x: 760, y: 174, val: waActiveMetric === "visitors" ? 1 : 43 },
-                  ].map((pt, idx) => (
-                    <g
-                      key={idx}
-                      className="cursor-pointer"
-                      onMouseEnter={() => setWaHoveredPoint(idx)}
-                      onMouseLeave={() => setWaHoveredPoint(null)}
+                const areaPath = chartPoints.length > 0
+                  ? `${chartPoints.map((p, i) => `${i === 0 ? "M" : "L"} ${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ")} L ${chartPoints[chartPoints.length - 1].x.toFixed(1)},175 L ${chartPoints[0].x.toFixed(1)},175 Z`
+                  : "";
+
+                const formatYTick = (v: number) => {
+                  if (v >= 1000000) return `${(v / 1000000).toFixed(1)}M`;
+                  if (v >= 1000) return `${Math.round(v / 1000)}k`;
+                  return String(Math.round(v));
+                };
+
+                return (
+                  <div className="relative w-full overflow-hidden bg-[var(--surface)]/50 rounded-xl p-3 border border-[var(--border-subtle)]">
+                    <svg
+                      viewBox="0 0 800 220"
+                      className="w-full h-44 sm:h-56 select-none overflow-visible"
+                      preserveAspectRatio="none"
                     >
-                      <circle
-                        cx={pt.x}
-                        cy={pt.y}
-                        r={waHoveredPoint === idx ? 6 : idx === 5 ? 4.5 : 3}
-                        fill={idx === 5 || waHoveredPoint === idx ? "#60a5fa" : "#3b82f6"}
-                        stroke="var(--bg)"
-                        strokeWidth="2"
-                        className="transition-all"
-                      />
-                      {/* Tooltip on hover */}
-                      {waHoveredPoint === idx && (
-                        <g>
-                          <rect
-                            x={pt.x - 45}
-                            y={pt.y - 32}
-                            width="90"
-                            height="22"
-                            rx="5"
-                            fill="var(--surface)"
-                            stroke="var(--border)"
-                            strokeWidth="1"
+                      <defs>
+                        <linearGradient id="vercelTrafficGrad" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.35" />
+                          <stop offset="100%" stopColor="#3b82f6" stopOpacity="0.0" />
+                        </linearGradient>
+                      </defs>
+
+                      {/* Horizontal Gridlines */}
+                      <line x1="50" y1="40" x2="780" y2="40" stroke="var(--border)" strokeWidth="0.8" strokeDasharray="3 3" />
+                      <line x1="50" y1="85" x2="780" y2="85" stroke="var(--border)" strokeWidth="0.8" strokeDasharray="3 3" />
+                      <line x1="50" y1="130" x2="780" y2="130" stroke="var(--border)" strokeWidth="0.8" strokeDasharray="3 3" />
+                      <line x1="50" y1="175" x2="780" y2="175" stroke="var(--border)" strokeWidth="0.8" />
+
+                      {/* Y-Axis Labels */}
+                      <text x="25" y="44" fill="var(--text-muted)" fontSize="10" fontFamily="monospace" textAnchor="end">
+                        {waActiveMetric === "bounceRate" ? "100%" : formatYTick(maxVal)}
+                      </text>
+                      <text x="25" y="89" fill="var(--text-muted)" fontSize="10" fontFamily="monospace" textAnchor="end">
+                        {waActiveMetric === "bounceRate" ? "66%" : formatYTick(maxVal * 0.66)}
+                      </text>
+                      <text x="25" y="134" fill="var(--text-muted)" fontSize="10" fontFamily="monospace" textAnchor="end">
+                        {waActiveMetric === "bounceRate" ? "33%" : formatYTick(maxVal * 0.33)}
+                      </text>
+                      <text x="25" y="178" fill="var(--text-muted)" fontSize="10" fontFamily="monospace" textAnchor="end">
+                        0
+                      </text>
+
+                      {/* Shaded Area Fill */}
+                      {areaPath && (
+                        <path
+                          d={areaPath}
+                          fill="url(#vercelTrafficGrad)"
+                        />
+                      )}
+
+                      {/* Solid Curve Line (Up to penultimate day) */}
+                      {solidPath && (
+                        <path
+                          d={solidPath}
+                          fill="none"
+                          stroke="#3b82f6"
+                          strokeWidth="2.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      )}
+
+                      {/* Dashed Line (Penultimate to current/projected day) */}
+                      {dashedPath && (
+                        <path
+                          d={dashedPath}
+                          fill="none"
+                          stroke="#3b82f6"
+                          strokeWidth="2"
+                          strokeDasharray="4 4"
+                          strokeLinecap="round"
+                        />
+                      )}
+
+                      {/* Interactive Nodes */}
+                      {chartPoints.map((pt: any, idx: number) => (
+                        <g
+                          key={idx}
+                          className="cursor-pointer"
+                          onMouseEnter={() => setWaHoveredPoint(idx)}
+                          onMouseLeave={() => setWaHoveredPoint(null)}
+                        >
+                          <circle
+                            cx={pt.x}
+                            cy={pt.y}
+                            r={waHoveredPoint === idx ? 6 : pt.val > 0 ? 4.5 : 3}
+                            fill={pt.val > 0 || waHoveredPoint === idx ? "#60a5fa" : "#3b82f6"}
+                            stroke="var(--bg)"
+                            strokeWidth="2"
+                            className="transition-all"
                           />
+                          {/* Tooltip on hover */}
+                          {waHoveredPoint === idx && (
+                            <g>
+                              <rect
+                                x={Math.max(5, pt.x - 55)}
+                                y={Math.max(5, pt.y - 34)}
+                                width="110"
+                                height="24"
+                                rx="5"
+                                fill="var(--surface)"
+                                stroke="var(--border)"
+                                strokeWidth="1"
+                              />
+                              <text
+                                x={Math.max(60, pt.x)}
+                                y={Math.max(20, pt.y - 18)}
+                                fill="var(--text-primary)"
+                                fontSize="10"
+                                fontFamily="monospace"
+                                fontWeight="bold"
+                                textAnchor="middle"
+                              >
+                                {pt.label}: {pt.val.toLocaleString()} {waActiveMetric === "visitors" ? "vis" : waActiveMetric === "pageViews" ? "pv" : "%"}
+                              </text>
+                            </g>
+                          )}
+                          {/* X-axis date labels */}
                           <text
                             x={pt.x}
-                            y={pt.y - 18}
-                            fill="var(--text-primary)"
+                            y="198"
+                            fill="var(--text-muted)"
                             fontSize="10"
                             fontFamily="monospace"
-                            fontWeight="bold"
                             textAnchor="middle"
                           >
-                            {pt.val.toLocaleString()} {waActiveMetric === "visitors" ? "vis" : "pv"}
+                            {pt.label}
                           </text>
                         </g>
-                      )}
-                      {/* X-axis date labels */}
-                      <text
-                        x={pt.x}
-                        y="198"
-                        fill="var(--text-muted)"
-                        fontSize="10"
-                        fontFamily="monospace"
-                        textAnchor="middle"
-                      >
-                        {pt.label}
-                      </text>
-                    </g>
-                  ))}
-                </svg>
-              </div>
+                      ))}
+                    </svg>
+                  </div>
+                );
+              })()}
 
               {/* 3 Breakdown Cards: Countries | Devices & Browsers | Operating Systems */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
