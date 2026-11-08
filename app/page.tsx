@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Lock, User, ArrowRight, ShieldCheck, Zap, Database, CheckCircle2, AlertCircle } from "lucide-react";
+import { Lock, User, ArrowRight, ShieldCheck, Zap, Database, CheckCircle2, AlertCircle, KeyRound, X, Copy, Check } from "lucide-react";
 import ThemeToggle from "@/components/ThemeToggle";
 
 export default function AuthPage() {
@@ -14,6 +14,15 @@ export default function AuthPage() {
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+
+  // Modal Forgot Password
+  const [isForgotModalOpen, setIsForgotModalOpen] = useState(false);
+  const [forgotUsername, setForgotUsername] = useState("");
+  const [forgotLoading, setForgotLoading] = useState(false);
+  const [forgotError, setForgotError] = useState<string | null>(null);
+  const [forgotSuccess, setForgotSuccess] = useState<string | null>(null);
+  const [resetTokenData, setResetTokenData] = useState<{ token: string; link: string } | null>(null);
+  const [copiedToken, setCopiedToken] = useState(false);
 
   // Cek apakah sudah login
   useEffect(() => {
@@ -35,6 +44,45 @@ export default function AuthPage() {
     }
     checkCurrentSession();
   }, [router]);
+
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setForgotError(null);
+    setForgotSuccess(null);
+    setResetTokenData(null);
+
+    if (!forgotUsername.trim()) {
+      setForgotError("Harap masukkan username Anda.");
+      return;
+    }
+
+    setForgotLoading(true);
+    try {
+      const res = await fetch("/api/auth/forgot-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: forgotUsername.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.message || "Gagal memproses permintaan.");
+      }
+      setForgotSuccess(data.message || "Token reset password berhasil dibuat.");
+      if (data.token) {
+        setResetTokenData({ token: data.token, link: data.resetLink });
+      }
+    } catch (err: any) {
+      setForgotError(err.message || "Terjadi kesalahan.");
+    } finally {
+      setForgotLoading(false);
+    }
+  };
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedToken(true);
+    setTimeout(() => setCopiedToken(false), 2000);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -232,9 +280,26 @@ export default function AuthPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-mono text-[var(--text-secondary)] mb-1.5 uppercase tracking-wider">
-                  Password
-                </label>
+                <div className="flex justify-between items-center mb-1.5">
+                  <label className="block text-xs font-mono text-[var(--text-secondary)] uppercase tracking-wider">
+                    Password
+                  </label>
+                  {mode === "login" && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setForgotUsername(username);
+                        setForgotError(null);
+                        setForgotSuccess(null);
+                        setResetTokenData(null);
+                        setIsForgotModalOpen(true);
+                      }}
+                      className="text-[11px] font-mono text-[var(--accent)] hover:underline cursor-pointer"
+                    >
+                      Lupa password?
+                    </button>
+                  )}
+                </div>
                 <div className="relative">
                   <Lock className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
                   <input
@@ -279,6 +344,127 @@ export default function AuthPage() {
           </div>
         </div>
       </main>
+
+      {/* Modal Lupa Password */}
+      {isForgotModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs animate-in fade-in">
+          <div className="technical-card w-full max-w-md rounded-2xl p-6 relative border border-[var(--border)] shadow-2xl">
+            <button
+              onClick={() => setIsForgotModalOpen(false)}
+              className="absolute top-4 right-4 p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-hover)] transition-colors cursor-pointer"
+            >
+              <X size={16} />
+            </button>
+
+            <div className="flex items-center gap-2 mb-3 text-xs font-mono text-[var(--accent)] uppercase tracking-wider">
+              <KeyRound size={16} />
+              <span>Pemulihan Akun // Forgot Password</span>
+            </div>
+
+            <h3 className="text-lg font-bold mb-1">Reset Kata Sandi</h3>
+            <p className="text-xs text-[var(--text-secondary)] mb-4">
+              Masukkan username Anda untuk membuat token pemulihan satu kali pakai.
+            </p>
+
+            {forgotError && (
+              <div className="mb-4 p-3 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-500 text-xs flex items-center gap-2">
+                <AlertCircle size={14} className="shrink-0" />
+                <span>{forgotError}</span>
+              </div>
+            )}
+
+            {forgotSuccess && (
+              <div className="mb-4 p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-500 text-xs flex items-center gap-2">
+                <CheckCircle2 size={14} className="shrink-0" />
+                <span>{forgotSuccess}</span>
+              </div>
+            )}
+
+            {!resetTokenData ? (
+              <form onSubmit={handleForgotPassword} className="space-y-4">
+                <div>
+                  <label className="block text-[11px] font-mono text-[var(--text-secondary)] mb-1 uppercase tracking-wider">
+                    Username Akun
+                  </label>
+                  <input
+                    type="text"
+                    value={forgotUsername}
+                    onChange={(e) => setForgotUsername(e.target.value)}
+                    placeholder="nama_pengguna"
+                    required
+                    className="technical-input w-full px-3 py-2 text-xs rounded-md"
+                  />
+                </div>
+
+                <div className="flex justify-end gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsForgotModalOpen(false)}
+                    className="px-3 py-2 text-xs font-mono rounded-md border border-[var(--border)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={forgotLoading}
+                    className="px-4 py-2 text-xs font-mono font-bold rounded-md bg-[var(--text-primary)] text-[var(--bg)] hover:opacity-90 transition-opacity flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                  >
+                    {forgotLoading ? (
+                      <div className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <>
+                        <span>Buat Token Reset</span>
+                        <ArrowRight size={13} />
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <div className="space-y-4 pt-2">
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[10px] font-mono text-[var(--text-muted)] uppercase tracking-wider">
+                      One-Time Reset Token (Berlaku 1 Jam)
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => copyToClipboard(resetTokenData.token)}
+                      className="text-[10px] font-mono text-[var(--accent)] hover:underline flex items-center gap-1 cursor-pointer"
+                    >
+                      {copiedToken ? <Check size={11} /> : <Copy size={11} />}
+                      <span>{copiedToken ? "Tersalin" : "Salin Token"}</span>
+                    </button>
+                  </div>
+                  <div className="p-2.5 rounded-md bg-[var(--bg)] border border-[var(--border)] text-[11px] font-mono break-all text-amber-400 select-all">
+                    {resetTokenData.token}
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-end gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsForgotModalOpen(false)}
+                    className="px-3 py-2 text-xs font-mono rounded-md border border-[var(--border)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer"
+                  >
+                    Tutup
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsForgotModalOpen(false);
+                      router.push(resetTokenData.link);
+                    }}
+                    className="px-4 py-2 text-xs font-mono font-bold rounded-md bg-emerald-500 text-black hover:bg-emerald-400 transition-colors flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <span>Lanjutkan Reset Password →</span>
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Footer */}
       <footer className="max-w-6xl w-full mx-auto pt-6 border-t border-[var(--border)] flex flex-col sm:flex-row items-center justify-between text-xs text-[var(--text-muted)] gap-3 font-mono">

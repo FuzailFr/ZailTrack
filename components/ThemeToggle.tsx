@@ -9,7 +9,7 @@ export default function ThemeToggle() {
 
   useEffect(() => {
     setMounted(true);
-    const saved = localStorage.getItem("zailtrack-theme") as "dark" | "light" | null;
+    const saved = (localStorage.getItem("theme") || localStorage.getItem("zailtrack-theme")) as "dark" | "light" | null;
     const initial =
       saved ||
       (window.matchMedia("(prefers-color-scheme: dark)").matches
@@ -22,7 +22,10 @@ export default function ThemeToggle() {
   const toggleTheme = () => {
     const nextTheme = theme === "dark" ? "light" : "dark";
     setTheme(nextTheme);
-    localStorage.setItem("zailtrack-theme", nextTheme);
+    try {
+      localStorage.setItem("theme", nextTheme);
+      localStorage.setItem("zailtrack-theme", nextTheme);
+    } catch {}
     document.documentElement.setAttribute("data-theme", nextTheme);
   };
 

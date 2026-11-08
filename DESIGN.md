@@ -52,40 +52,69 @@ Desain mendukung mode gelap (*Dark Mode - Slate Charcoal*) dan mode terang (*Lig
 
 ### Mode Gelap (Dark Mode - Default)
 ```css
+/* Mode Gelap (Slate-Charcoal Technical Archival) */
 [data-theme="dark"] {
-  --bg: #0b0d11;              /* Base canvas gelap teknikal */
-  --bg-secondary: #12151c;    /* Background header tabel / kontainer lapis kedua */
-  --surface: #181c25;         /* Permukaan kartu / card background */
-  --surface-hover: #1f2430;   /* State hover pada list / baris */
-  --border: #262c38;          /* Border utama hairline */
-  --border-subtle: #1c212b;   /* Garis pemisah internal */
-  --text-primary: #f3f4f6;    /* Teks judul & angka utama */
-  --text-secondary: #94a3b8;  /* Teks deskripsi & label sekunder */
-  --text-muted: #64748b;      /* Metadata, timestamp, placeholder */
-  --accent: #38bdf8;          /* Sky Blue (Primary Action) */
-  --accent-muted: rgba(56, 189, 248, 0.12);
+  --bg: #0f1115;              /* Base canvas slate gelap teknis */
+  --bg-secondary: #16191f;    /* Background header tabel / kontainer lapis kedua */
+  --surface: #1a1e26;         /* Permukaan kartu / card background tegas */
+  --surface-hover: #222732;   /* State hover pada baris & kontrol interaktif */
+  --border: #262b35;          /* Border utama hairline berdefinisi tinggi */
+  --border-subtle: #1c212a;   /* Garis pemisah internal & grid */
+  --text-primary: #f1f3f5;    /* Teks judul & angka utama kontras tinggi */
+  --text-secondary: #8b949e;  /* Teks deskripsi & label sekunder nyaman dibaca */
+  --text-muted: #626c79;      /* Metadata, timestamp, placeholder */
+  --accent: #60a5fa;          /* Blue accent (Primary Action) */
+  --accent-muted: rgba(96, 165, 250, 0.12);
+  --hero-gradient: linear-gradient(180deg, #0a0c0e 0%, #16191f 100%);
   --income: #34d399;          /* Emerald Mint (Pemasukan) */
+  --income-bg: rgba(52, 211, 153, 0.12);
   --expense: #fb7185;         /* Rose Coral (Pengeluaran) */
+  --expense-bg: rgba(251, 113, 133, 0.12);
 }
 ```
 
 ### Mode Terang (Light Mode)
 ```css
+/* Mode Terang (Paper & Lead Technical Archival) */
 [data-theme="light"] {
   --bg: #fafaf9;              /* Off-white paper canvas */
-  --bg-secondary: #f4f4f5;    /* Gray neutral tint */
-  --surface: #ffffff;         /* Pure white cards */
-  --surface-hover: #f8fafc;   /* Subtle hover state */
-  --border: #e2e8f0;          /* Clean pencil lead border */
-  --border-subtle: #edf2f7;   /* Faint divider */
-  --text-primary: #0f172a;    /* Deep slate ink */
-  --text-secondary: #475569;  /* Charcoal body */
-  --text-muted: #64748b;      /* Lead gray */
-  --accent: #0284c7;          /* Cobalt blue */
-  --accent-muted: rgba(2, 132, 199, 0.08);
+  --bg-secondary: #f3f4f6;    /* Soft gray neutral tint */
+  --surface: #ffffff;         /* Pure white clean cards */
+  --surface-hover: #f8fafc;   /* Subtle slate hover state */
+  --border: #e2e5e9;          /* Clean technical border */
+  --border-subtle: #eceef1;   /* Faint divider line */
+  --text-primary: #111827;    /* Deep slate ink */
+  --text-secondary: #4b5563;  /* Charcoal body */
+  --text-muted: #6b7280;      /* Lead gray */
+  --accent: #2563eb;          /* Cobalt blue */
+  --accent-muted: rgba(37, 99, 235, 0.08);
+  --hero-gradient: linear-gradient(180deg, #f4f4f2 0%, #e9ecef 100%);
   --income: #059669;          /* Deep emerald */
   --expense: #e11d48;         /* Deep crimson */
 }
+```
+
+### Transisi Halus (Smooth Transitions)
+```css
+body {
+  background: var(--bg);
+  color: var(--text-primary);
+  transition: background-color 150ms ease, color 150ms ease, border-color 150ms ease;
+}
+```
+
+### Anti-Kedipan (*Zero-FOUC Theme Init*)
+Script inline pada `<head>` di [`app/layout.tsx`](file:///d:/PROJEK/ZailTrack/app/layout.tsx) membaca kunci penyimpanan `theme` dan fallback `zailtrack-theme` sebelum browser merender DOM:
+```javascript
+(function () {
+  try {
+    var stored = localStorage.getItem("theme") || localStorage.getItem("zailtrack-theme");
+    var theme = stored === "light" || stored === "dark" ? stored : "dark";
+    document.documentElement.setAttribute("data-theme", theme);
+  } catch (e) {
+    document.documentElement.setAttribute("data-theme", "dark");
+  }
+})();
 ```
 
 ---
@@ -121,12 +150,17 @@ Badge ringkas dengan latar belakang transparan 10% dan border 20-30% serasi:
   </span>
   ```
 
-### C. Live Telemetry / User Pill
-Indikator titik lampu aktif (*active glowing dot*):
+### C. Live Telemetry / User Pill & Online Beacon
+Indikator titik lampu aktif (*active glowing dot*) dan sinyal berdenyut (*pulsating live beacon*):
 ```html
-<div className="flex items-center gap-1.5 text-xs text-[var(--text-muted)] font-mono">
-  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse inline-block" />
-  <span>USER // username</span>
+<!-- Pill User Header -->
+<div className="flex items-center gap-2 px-2.5 py-1 rounded-lg bg-[var(--bg)] border border-[var(--border)] text-xs font-mono">
+  <span className="relative flex h-2 w-2">
+    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+  </span>
+  <span className="text-emerald-400 font-bold">1</span>
+  <span className="text-[var(--text-muted)] text-[11px]">Online</span>
 </div>
 ```
 
@@ -140,6 +174,28 @@ Kontrol mode bergaya panel instrumen kokpit:
   <button className="px-3 py-1.5 rounded-md text-[var(--text-muted)] hover:text-amber-500">
     Mode Dev
   </button>
+</div>
+```
+
+### E. Geolocation & Network Address Pill
+Menampilkan identitas jaringan pengguna secara bersih, menormalisasi loopback IPv6 (`::1` menjadi `127.0.0.1`), dan menyematkan tag wilayah geografis otomatis:
+```html
+<div className="flex flex-col">
+  <span className="font-mono text-xs text-[var(--text-primary)]">127.0.0.1</span>
+  <span className="font-mono text-[10px] text-[var(--text-muted)] flex items-center gap-1">
+    📍 Localhost (ID)
+  </span>
+</div>
+```
+
+### F. Clean Monospace Identity (Zero-Clash Actor Tagging)
+Menghindari prefix `@` yang dapat merusak kerning pada font `Space Mono` (misalnya `@fuzail_dev` yang terbaca mirip `afuzail_dev`), dengan memisahkan username dan tag peran secara semantik:
+```html
+<div className="flex items-center gap-1.5">
+  <span className="font-mono font-medium text-xs text-[var(--text-primary)]">fuzail_dev</span>
+  <span className="text-[10px] px-1.5 py-0.2 rounded font-mono font-semibold bg-amber-500/15 text-amber-400 border border-amber-500/30">
+    admin
+  </span>
 </div>
 ```
 

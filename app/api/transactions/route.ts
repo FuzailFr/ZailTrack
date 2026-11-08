@@ -68,6 +68,9 @@ export async function GET(request: Request) {
     const totalExpense = Number(summary[0]?.total_expense || 0);
     const saldo = totalIncome - totalExpense;
 
+    // Heartbeat update
+    sql`UPDATE users SET last_active_at = CURRENT_TIMESTAMP WHERE id = ${session.userId}`.catch(() => {});
+
     return NextResponse.json({
       status: "success",
       summary: {
@@ -138,6 +141,9 @@ export async function POST(request: Request) {
       VALUES (${session.userId}, ${tipe}, ${jumlah}, ${deskripsi}, ${tanggal})
       RETURNING id, tipe, jumlah, deskripsi, TO_CHAR(tanggal, 'YYYY-MM-DD') AS tanggal, created_at
     `;
+
+    // Heartbeat update
+    sql`UPDATE users SET last_active_at = CURRENT_TIMESTAMP WHERE id = ${session.userId}`.catch(() => {});
 
     return NextResponse.json({
       status: "success",

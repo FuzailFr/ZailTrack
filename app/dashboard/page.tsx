@@ -317,7 +317,7 @@ export default function DashboardPage() {
   };
 
   useEffect(() => {
-    if (activeView === "dev" && user?.role === "admin") {
+    if (activeView === "dev" && (user?.role === "admin" || user?.role === "developer")) {
       fetchDevData();
     }
   }, [activeView, user]);
@@ -429,7 +429,7 @@ export default function DashboardPage() {
       setIsModalOpen(false);
 
       fetchTransactions();
-      if (user?.role === "admin") fetchDevData();
+      if (user?.role === "admin" || user?.role === "developer") fetchDevData();
     } catch (err: any) {
       setModalError(err.message || "Terjadi kesalahan.");
     } finally {
@@ -452,7 +452,7 @@ export default function DashboardPage() {
       }
 
       fetchTransactions();
-      if (user?.role === "admin") fetchDevData();
+      if (user?.role === "admin" || user?.role === "developer") fetchDevData();
     } catch (err) {
       console.error("Gagal menghapus transaksi", err);
     } finally {
@@ -507,7 +507,7 @@ export default function DashboardPage() {
 
       setEditingTransaction(null);
       fetchTransactions();
-      if (user?.role === "admin") fetchDevData();
+      if (user?.role === "admin" || user?.role === "developer") fetchDevData();
     } catch (err: any) {
       setEditError(err.message || "Terjadi kesalahan saat menyimpan perubahan.");
     } finally {
@@ -622,9 +622,9 @@ export default function DashboardPage() {
                 <span className="text-[10px] font-mono px-1.5 py-0.5 rounded border border-[var(--border)] bg-[var(--surface)] text-[var(--text-muted)]">
                   v2.0
                 </span>
-                {user?.role === "admin" && (
+                {(user?.role === "admin" || user?.role === "developer") && (
                   <span className="inline-flex text-[9px] sm:text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-500 border border-amber-500/30 items-center gap-1">
-                    <ShieldCheck size={10} /> ADMIN
+                    <ShieldCheck size={10} /> {user?.role.toUpperCase()}
                   </span>
                 )}
               </div>
@@ -663,9 +663,18 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Row 2: Mode Switcher (Khusus Admin) */}
-        {user?.role === "admin" && (
-          <div className="flex items-center justify-between sm:justify-end pt-1">
+        {/* Row 2: Mode Switcher (Khusus Admin / Developer) */}
+        {(user?.role === "admin" || user?.role === "developer") && (
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 pt-1">
+            <button
+              type="button"
+              onClick={() => router.push("/admin")}
+              className="px-3 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-500 hover:bg-amber-500/20 text-xs font-mono font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+            >
+              <Database size={13} />
+              <span>Buka Admin Cockpit & DB Studio →</span>
+            </button>
+
             <div className="w-full sm:w-auto flex items-center p-0.5 rounded-lg border border-[var(--border)] bg-[var(--surface)] text-xs font-mono">
               <button
                 type="button"
@@ -689,7 +698,7 @@ export default function DashboardPage() {
                 }`}
               >
                 <Terminal size={13} />
-                <span>Mode Dev</span>
+                <span>Quick Dev</span>
               </button>
             </div>
           </div>
@@ -701,7 +710,7 @@ export default function DashboardPage() {
         {/* ============================================================== */}
         {/* VIEW 1: DEVELOPER COCKPIT (Hanya Muncul di Mode Dev) */}
         {/* ============================================================== */}
-        {activeView === "dev" && user?.role === "admin" ? (
+        {activeView === "dev" && (user?.role === "admin" || user?.role === "developer") ? (
           <div className="space-y-6 animate-in fade-in">
             {/* Dev Mode Banner */}
             <div className="p-4 rounded-xl border border-amber-500/30 bg-amber-500/10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">

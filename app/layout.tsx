@@ -37,9 +37,8 @@ export const metadata: Metadata = {
 const THEME_INIT_SCRIPT = `
 (function () {
   try {
-    var saved = localStorage.getItem("zailtrack-theme");
-    var pref = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
-    var theme = saved || pref;
+    var stored = localStorage.getItem("theme") || localStorage.getItem("zailtrack-theme");
+    var theme = stored === "light" || stored === "dark" ? stored : "dark";
     document.documentElement.setAttribute("data-theme", theme);
   } catch (e) {
     document.documentElement.setAttribute("data-theme", "dark");

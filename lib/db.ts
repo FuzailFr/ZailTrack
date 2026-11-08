@@ -52,6 +52,18 @@ export async function initDbSchema() {
     await sql`
       ALTER TABLE users ADD COLUMN IF NOT EXISTS telegram_link_code VARCHAR(32) UNIQUE;
     `;
+    await sql`
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS status VARCHAR(20) NOT NULL DEFAULT 'active';
+    `;
+    await sql`
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token VARCHAR(128) UNIQUE;
+    `;
+    await sql`
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token_expires_at TIMESTAMP WITH TIME ZONE;
+    `;
+    await sql`
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS last_active_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP;
+    `;
 
     // 3. Tabel transactions
     await sql`
@@ -66,7 +78,56 @@ export async function initDbSchema() {
       );
     `;
 
-    // 4. Index performa tinggi
+    // 4. Tabel audit_logs
+    await sql`
+      CREATE TABLE IF NOT EXISTS audit_logs (
+        id SERIAL PRIMARY KEY,
+        user_id INT REFERENCES users(id) ON DELETE SET NULL,
+        username VARCHAR(100),
+        role VARCHAR(20),
+        action VARCHAR(100) NOT NULL,
+        target_type VARCHAR(50),
+        target_id VARCHAR(50),
+        details JSONB,
+        ip_address VARCHAR(100),
+        region VARCHAR(100) DEFAULT 'Localhost',
+        user_agent TEXT,
+        status VARCHAR(20) DEFAULT 'success',
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+    `;
+
+    // 5. Tabel bot_logs
+    await sql`
+      CREATE TABLE IF NOT EXISTS bot_logs (
+        id SERIAL PRIMARY KEY,
+        chat_id BIGINT NOT NULL,
+        user_id INT REFERENCES users(id) ON DELETE SET NULL,
+        username VARCHAR(100),
+        command VARCHAR(100) NOT NULL,
+        raw_text TEXT,
+        status VARCHAR(20) NOT NULL DEFAULT 'success',
+        response_time_ms INT,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+    `;
+
+    // 6. Tabel traffic_logs
+    await sql`
+      CREATE TABLE IF NOT EXISTS traffic_logs (
+        id SERIAL PRIMARY KEY,
+        endpoint VARCHAR(255) NOT NULL,
+        method VARCHAR(10) NOT NULL,
+        status_code INT NOT NULL,
+        response_time_ms INT,
+        user_id INT REFERENCES users(id) ON DELETE SET NULL,
+        ip_address VARCHAR(100),
+        region VARCHAR(100) DEFAULT 'Localhost',
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+    `;
+
+    // 7. Index performa tinggi
     await sql`
       CREATE INDEX IF NOT EXISTS idx_transactions_user_date 
       ON transactions (user_id, tanggal DESC);
@@ -80,6 +141,36 @@ export async function initDbSchema() {
     await sql`
       CREATE INDEX IF NOT EXISTS idx_users_telegram_chat_id 
       ON users (telegram_chat_id);
+    `;
+
+    await sql`
+      CREATE INDEX IF NOT EXISTS idx_users_status 
+      ON users (status);
+    `;
+
+    await sql`
+      CREATE INDEX IF NOT EXISTS idx_users_reset_token 
+      ON users (reset_token);
+    `;
+
+    await sql`
+      CREATE INDEX IF NOT EXISTS idx_audit_logs_created_at 
+      ON audit_logs (created_at DESC);
+    `;
+
+    await sql`
+      CREATE INDEX IF NOT EXISTS idx_audit_logs_action 
+      ON audit_logs (action);
+    `;
+
+    await sql`
+      CREATE INDEX IF NOT EXISTS idx_bot_logs_created_at 
+      ON bot_logs (created_at DESC);
+    `;
+
+    await sql`
+      CREATE INDEX IF NOT EXISTS idx_traffic_logs_created_at 
+      ON traffic_logs (created_at DESC);
     `;
 
     schemaInitialized = true;

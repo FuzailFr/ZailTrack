@@ -17,7 +17,17 @@ function getSecretKey(): Uint8Array {
 export interface UserPayload {
   userId: number;
   username: string;
-  role: string;
+  role: "user" | "admin" | "developer" | string;
+  status?: "active" | "suspended" | "banned" | string;
+}
+
+// Otoritas peran (Role-Based Access Control)
+export function hasAdminAccess(role?: string): boolean {
+  return role === "admin" || role === "developer";
+}
+
+export function hasDevAccess(role?: string): boolean {
+  return role === "developer";
 }
 
 // Generate JWT token 7 hari untuk sesi web browser
@@ -64,6 +74,7 @@ export async function verifyToken(token: string): Promise<UserPayload | null> {
       userId: Number(payload.userId),
       username: String(payload.username),
       role: String(payload.role || "user"),
+      status: String(payload.status || "active"),
     };
   } catch {
     return null;
