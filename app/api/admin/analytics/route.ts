@@ -167,7 +167,7 @@ export async function GET(request: Request) {
         WHERE is_page_view = true AND country IS NOT NULL
         GROUP BY country, country_code
         ORDER BY count DESC
-        LIMIT 5
+        LIMIT 50
       `,
 
       // 13. Devices Breakdown
@@ -179,6 +179,7 @@ export async function GET(request: Request) {
         WHERE is_page_view = true AND device IS NOT NULL
         GROUP BY device
         ORDER BY count DESC
+        LIMIT 20
       `,
 
       // 14. Browsers Breakdown
@@ -190,7 +191,7 @@ export async function GET(request: Request) {
         WHERE is_page_view = true AND browser IS NOT NULL
         GROUP BY browser
         ORDER BY count DESC
-        LIMIT 5
+        LIMIT 30
       `,
 
       // 15. OS Breakdown
@@ -202,7 +203,7 @@ export async function GET(request: Request) {
         WHERE is_page_view = true AND os IS NOT NULL
         GROUP BY os
         ORDER BY count DESC
-        LIMIT 5
+        LIMIT 30
       `,
     ]);
 

@@ -11,7 +11,36 @@ const COUNTRY_DATA: Record<string, { name: string; flag: string }> = {
   MX: { name: "Mexico", flag: "🇲🇽" },
   JP: { name: "Japan", flag: "🇯🇵" },
   AU: { name: "Australia", flag: "🇦🇺" },
+  NL: { name: "Netherlands", flag: "🇳🇱" },
+  FR: { name: "France", flag: "🇫🇷" },
+  CA: { name: "Canada", flag: "🇨🇦" },
+  BR: { name: "Brazil", flag: "🇧🇷" },
+  VN: { name: "Vietnam", flag: "🇻🇳" },
+  TH: { name: "Thailand", flag: "🇹🇭" },
+  RU: { name: "Russia", flag: "🇷🇺" },
 };
+
+export function resolveCountryInfo(code: string) {
+  const upper = (code || "").toUpperCase().trim();
+  if (COUNTRY_DATA[upper]) return COUNTRY_DATA[upper];
+
+  let name = upper;
+  try {
+    const regionNames = new Intl.DisplayNames(["en"], { type: "region" });
+    const resolved = regionNames.of(upper);
+    if (resolved) name = resolved;
+  } catch {
+    name = upper;
+  }
+
+  let flag = "🌐";
+  if (upper.length === 2 && /^[A-Z]{2}$/.test(upper)) {
+    const codePoints = upper.split("").map((c) => 127397 + c.charCodeAt(0));
+    flag = String.fromCodePoint(...codePoints);
+  }
+
+  return { name, flag };
+}
 
 async function queryVercelMetric(body: any, token: string, teamId: string, projectId: string) {
   const res = await fetch(`https://api.vercel.com/v2/observability/query?teamId=${teamId}`, {
@@ -47,10 +76,10 @@ export async function getLiveVercelAnalytics() {
       queryVercelMetric({ metric: "vercel.analytics_pageview.count", aggregation: "unique/visitor_id", startTime, endTime }, token, teamId, projectId),
       queryVercelMetric({ metric: "vercel.analytics_pageview.count", aggregation: "sum", startTime, endTime }, token, teamId, projectId),
       queryVercelMetric({ metric: "vercel.analytics_pageview.count", aggregation: "unique/visitor_id", startTime: liveStartTime, endTime }, token, teamId, projectId),
-      queryVercelMetric({ metric: "vercel.analytics_pageview.count", aggregation: "sum", groupBy: ["country"], startTime, endTime, limit: 5 }, token, teamId, projectId),
-      queryVercelMetric({ metric: "vercel.analytics_pageview.count", aggregation: "sum", groupBy: ["device_type"], startTime, endTime }, token, teamId, projectId),
-      queryVercelMetric({ metric: "vercel.analytics_pageview.count", aggregation: "sum", groupBy: ["browser_name"], startTime, endTime, limit: 5 }, token, teamId, projectId),
-      queryVercelMetric({ metric: "vercel.analytics_pageview.count", aggregation: "sum", groupBy: ["os_name"], startTime, endTime, limit: 5 }, token, teamId, projectId),
+      queryVercelMetric({ metric: "vercel.analytics_pageview.count", aggregation: "sum", groupBy: ["country"], startTime, endTime, limit: 50 }, token, teamId, projectId),
+      queryVercelMetric({ metric: "vercel.analytics_pageview.count", aggregation: "sum", groupBy: ["device_type"], startTime, endTime, limit: 20 }, token, teamId, projectId),
+      queryVercelMetric({ metric: "vercel.analytics_pageview.count", aggregation: "sum", groupBy: ["browser_name"], startTime, endTime, limit: 30 }, token, teamId, projectId),
+      queryVercelMetric({ metric: "vercel.analytics_pageview.count", aggregation: "sum", groupBy: ["os_name"], startTime, endTime, limit: 30 }, token, teamId, projectId),
       queryVercelMetric({ metric: "vercel.analytics_pageview.count", aggregation: "unique/visitor_id", startTime, endTime, granularity: { hours: 24 } }, token, teamId, projectId),
     ]);
 
@@ -61,7 +90,7 @@ export async function getLiveVercelAnalytics() {
     const totalCountrySum = (countriesRes.summary || []).reduce((acc: number, c: any) => acc + Number(c.vercel_analytics_pageview_count_sum || 0), 0) || 1;
     const countries = (countriesRes.summary || []).map((c: any) => {
       const code = String(c.country || "US").toUpperCase();
-      const info = COUNTRY_DATA[code] || { name: code, flag: "🌐" };
+      const info = resolveCountryInfo(code);
       const count = Number(c.vercel_analytics_pageview_count_sum || 0);
       return {
         name: info.name,

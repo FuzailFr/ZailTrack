@@ -42,6 +42,7 @@ import {
   Globe,
   ExternalLink,
   Calendar,
+  Maximize2,
 } from "lucide-react";
 import ThemeToggle from "@/components/ThemeToggle";
 
@@ -125,6 +126,8 @@ export default function AdminDashboardPage() {
   const [waActiveMetric, setWaActiveMetric] = useState<"visitors" | "pageViews" | "bounceRate">("visitors");
   const [waSubTabDevice, setWaSubTabDevice] = useState<"devices" | "browsers">("devices");
   const [waHoveredPoint, setWaHoveredPoint] = useState<number | null>(null);
+  const [waExpandedModal, setWaExpandedModal] = useState<"countries" | "devices" | "browsers" | "os" | null>(null);
+  const [waModalSearch, setWaModalSearch] = useState("");
 
   const fetchAnalytics = async () => {
     setAnalyticsLoading(true);
@@ -1099,131 +1102,373 @@ export default function AdminDashboardPage() {
               })()}
 
               {/* 3 Breakdown Cards: Countries | Devices & Browsers | Operating Systems */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {/* Breakdown 1: Countries */}
-                <div className="technical-card rounded-xl p-4 flex flex-col justify-between">
-                  <div>
-                    <div className="flex items-center justify-between pb-2.5 border-b border-[var(--border)] text-xs font-mono">
-                      <span className="font-bold text-[var(--text-primary)]">Countries</span>
-                      <span className="text-[10px] text-[var(--text-muted)] tracking-wider uppercase">VISITORS</span>
-                    </div>
+              {(() => {
+                const countriesList = analyticsData?.webAnalytics?.countries || [
+                  { name: "United States", flag: "🇺🇸", percentage: 46, count: 120, code: "US" },
+                  { name: "Indonesia", flag: "🇮🇩", percentage: 29, count: 75, code: "ID" },
+                  { name: "Singapore", flag: "🇸🇬", percentage: 10, count: 26, code: "SG" },
+                  { name: "United Kingdom", flag: "🇬🇧", percentage: 9, count: 23, code: "GB" },
+                  { name: "Germany", flag: "🇩🇪", percentage: 4, count: 10, code: "DE" },
+                ];
 
-                    <div className="mt-3 space-y-2">
-                      {(analyticsData?.webAnalytics?.countries || [
-                        { name: "United States of America", flag: "🇺🇸", percentage: 46 },
-                        { name: "Indonesia", flag: "🇮🇩", percentage: 20 },
-                        { name: "Germany", flag: "🇩🇪", percentage: 4 },
-                        { name: "Mexico", flag: "🇲🇽", percentage: 4 },
-                        { name: "Philippines", flag: "🇵🇭", percentage: 4 },
-                      ]).map((item: any) => (
-                        <div key={item.name} className="relative rounded-md overflow-hidden bg-[var(--surface)] text-xs font-mono py-1.5 px-2">
-                          <div
-                            className="absolute inset-y-0 left-0 bg-blue-500/10 border-r border-blue-500/30"
-                            style={{ width: `${item.percentage}%` }}
-                          />
-                          <div className="relative flex items-center justify-between">
-                            <div className="flex items-center gap-2 truncate flex-1 min-w-0 pr-2">
-                              <span className="text-sm shrink-0">{item.flag}</span>
-                              <span className="truncate text-[var(--text-primary)]">{item.name}</span>
-                            </div>
-                            <span className="font-bold text-[var(--text-primary)]">{item.percentage}%</span>
+                const devicesList = analyticsData?.webAnalytics?.devices || [
+                  { name: "Desktop", percentage: 55, count: 143 },
+                  { name: "Mobile", percentage: 35, count: 91 },
+                  { name: "Tablet", percentage: 10, count: 26 },
+                ];
+
+                const browsersList = analyticsData?.webAnalytics?.browsers || [
+                  { name: "Chrome", percentage: 58, count: 151 },
+                  { name: "Safari", percentage: 24, count: 62 },
+                  { name: "Edge", percentage: 10, count: 26 },
+                  { name: "Firefox", percentage: 8, count: 21 },
+                ];
+
+                const osList = analyticsData?.webAnalytics?.operatingSystems || [
+                  { name: "Windows", percentage: 30, count: 78 },
+                  { name: "iOS", percentage: 24, count: 62 },
+                  { name: "Android", percentage: 20, count: 52 },
+                  { name: "Mac", percentage: 15, count: 39 },
+                  { name: "Ubuntu", percentage: 11, count: 29 },
+                ];
+
+                const currentDeviceList = waSubTabDevice === "devices" ? devicesList : browsersList;
+
+                return (
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {/* Breakdown 1: Countries */}
+                    <div className="technical-card rounded-xl p-4 flex flex-col justify-between">
+                      <div>
+                        <div className="flex items-center justify-between pb-2.5 border-b border-[var(--border)] text-xs font-mono">
+                          <span className="font-bold text-[var(--text-primary)]">Countries</span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] text-[var(--text-muted)] tracking-wider uppercase">VISITORS</span>
+                            <button
+                              type="button"
+                              onClick={() => { setWaExpandedModal("countries"); setWaModalSearch(""); }}
+                              className="p-1 rounded text-[var(--text-muted)] hover:text-blue-400 hover:bg-blue-500/10 cursor-pointer transition-colors"
+                              title="Lihat Full & Scroll Semua Negara"
+                            >
+                              <Maximize2 className="w-3.5 h-3.5" />
+                            </button>
                           </div>
                         </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
 
-                {/* Breakdown 2: Devices & Browsers */}
-                <div className="technical-card rounded-xl p-4 flex flex-col justify-between">
-                  <div>
-                    <div className="flex items-center justify-between pb-2 border-b border-[var(--border)] text-xs font-mono">
-                      <div className="flex items-center gap-3">
+                        {/* Scrollable list inside card */}
+                        <div className="mt-3 space-y-2 max-h-56 overflow-y-auto pr-1.5 scrollbar-thin select-none">
+                          {countriesList.map((item: any, idx: number) => (
+                            <div key={item.name + idx} className="relative rounded-md overflow-hidden bg-[var(--surface)] text-xs font-mono py-1.5 px-2 hover:bg-[var(--surface-hover)] transition-colors">
+                              <div
+                                className="absolute inset-y-0 left-0 bg-blue-500/10 border-r border-blue-500/30"
+                                style={{ width: `${Math.max(item.percentage, 2)}%` }}
+                              />
+                              <div className="relative flex items-center justify-between">
+                                <div className="flex items-center gap-2 truncate flex-1 min-w-0 pr-2">
+                                  <span className="text-sm shrink-0">{item.flag || "🌐"}</span>
+                                  <span className="truncate text-[var(--text-primary)]">{item.name}</span>
+                                </div>
+                                <span className="font-bold text-[var(--text-primary)]">{item.percentage}%</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="pt-2.5 mt-2 border-t border-[var(--border)] flex items-center justify-between text-[11px] font-mono text-[var(--text-muted)]">
+                        <span>Total {countriesList.length} negara</span>
                         <button
-                          onClick={() => setWaSubTabDevice("devices")}
-                          className={`cursor-pointer transition-colors pb-1 border-b-2 font-bold ${
-                            waSubTabDevice === "devices"
-                              ? "border-blue-500 text-[var(--text-primary)]"
-                              : "border-transparent text-[var(--text-muted)] hover:text-[var(--text-primary)]"
-                          }`}
+                          type="button"
+                          onClick={() => { setWaExpandedModal("countries"); setWaModalSearch(""); }}
+                          className="text-blue-400 hover:text-blue-300 hover:underline cursor-pointer flex items-center gap-1 font-semibold"
                         >
-                          Devices
-                        </button>
-                        <button
-                          onClick={() => setWaSubTabDevice("browsers")}
-                          className={`cursor-pointer transition-colors pb-1 border-b-2 font-bold ${
-                            waSubTabDevice === "browsers"
-                              ? "border-blue-500 text-[var(--text-primary)]"
-                              : "border-transparent text-[var(--text-muted)] hover:text-[var(--text-primary)]"
-                          }`}
-                        >
-                          Browsers
+                          Lihat Full ({countriesList.length}) ↗
                         </button>
                       </div>
-                      <span className="text-[10px] text-[var(--text-muted)] tracking-wider uppercase">VISITORS</span>
                     </div>
 
-                    <div className="mt-3 space-y-2">
-                      {(waSubTabDevice === "devices"
-                        ? (analyticsData?.webAnalytics?.devices || [
-                            { name: "Desktop", percentage: 51 },
-                            { name: "Mobile", percentage: 34 },
-                            { name: "Tablet", percentage: 15 },
-                          ])
-                        : (analyticsData?.webAnalytics?.browsers || [
-                            { name: "Chrome", percentage: 62 },
-                            { name: "Safari", percentage: 24 },
-                            { name: "Edge", percentage: 8 },
-                            { name: "Firefox", percentage: 6 },
-                          ])
-                      ).map((item: any) => (
-                        <div key={item.name} className="relative rounded-md overflow-hidden bg-[var(--surface)] text-xs font-mono py-1.5 px-2">
-                          <div
-                            className="absolute inset-y-0 left-0 bg-blue-500/10 border-r border-blue-500/30"
-                            style={{ width: `${item.percentage}%` }}
-                          />
-                          <div className="relative flex items-center justify-between">
-                            <span className="text-[var(--text-primary)]">{item.name}</span>
-                            <span className="font-bold text-[var(--text-primary)]">{item.percentage}%</span>
+                    {/* Breakdown 2: Devices & Browsers */}
+                    <div className="technical-card rounded-xl p-4 flex flex-col justify-between">
+                      <div>
+                        <div className="flex items-center justify-between pb-2 border-b border-[var(--border)] text-xs font-mono">
+                          <div className="flex items-center gap-3">
+                            <button
+                              onClick={() => setWaSubTabDevice("devices")}
+                              className={`cursor-pointer transition-colors pb-1 border-b-2 font-bold ${
+                                waSubTabDevice === "devices"
+                                  ? "border-blue-500 text-[var(--text-primary)]"
+                                  : "border-transparent text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+                              }`}
+                            >
+                              Devices
+                            </button>
+                            <button
+                              onClick={() => setWaSubTabDevice("browsers")}
+                              className={`cursor-pointer transition-colors pb-1 border-b-2 font-bold ${
+                                waSubTabDevice === "browsers"
+                                  ? "border-blue-500 text-[var(--text-primary)]"
+                                  : "border-transparent text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+                              }`}
+                            >
+                              Browsers
+                            </button>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] text-[var(--text-muted)] tracking-wider uppercase">VISITORS</span>
+                            <button
+                              type="button"
+                              onClick={() => { setWaExpandedModal(waSubTabDevice); setWaModalSearch(""); }}
+                              className="p-1 rounded text-[var(--text-muted)] hover:text-blue-400 hover:bg-blue-500/10 cursor-pointer transition-colors"
+                              title={`Lihat Full ${waSubTabDevice === "devices" ? "Devices" : "Browsers"}`}
+                            >
+                              <Maximize2 className="w-3.5 h-3.5" />
+                            </button>
                           </div>
                         </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
 
-                {/* Breakdown 3: Operating Systems */}
-                <div className="technical-card rounded-xl p-4 flex flex-col justify-between">
-                  <div>
-                    <div className="flex items-center justify-between pb-2.5 border-b border-[var(--border)] text-xs font-mono">
-                      <span className="font-bold text-[var(--text-primary)]">Operating Systems</span>
-                      <span className="text-[10px] text-[var(--text-muted)] tracking-wider uppercase">VISITORS</span>
+                        {/* Scrollable list inside card */}
+                        <div className="mt-3 space-y-2 max-h-56 overflow-y-auto pr-1.5 scrollbar-thin select-none">
+                          {currentDeviceList.map((item: any, idx: number) => (
+                            <div key={item.name + idx} className="relative rounded-md overflow-hidden bg-[var(--surface)] text-xs font-mono py-1.5 px-2 hover:bg-[var(--surface-hover)] transition-colors">
+                              <div
+                                className="absolute inset-y-0 left-0 bg-blue-500/10 border-r border-blue-500/30"
+                                style={{ width: `${Math.max(item.percentage, 2)}%` }}
+                              />
+                              <div className="relative flex items-center justify-between">
+                                <span className="text-[var(--text-primary)]">{item.name}</span>
+                                <span className="font-bold text-[var(--text-primary)]">{item.percentage}%</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="pt-2.5 mt-2 border-t border-[var(--border)] flex items-center justify-between text-[11px] font-mono text-[var(--text-muted)]">
+                        <span>Total {currentDeviceList.length} {waSubTabDevice === "devices" ? "perangkat" : "browser"}</span>
+                        <button
+                          type="button"
+                          onClick={() => { setWaExpandedModal(waSubTabDevice); setWaModalSearch(""); }}
+                          className="text-blue-400 hover:text-blue-300 hover:underline cursor-pointer flex items-center gap-1 font-semibold"
+                        >
+                          Lihat Full ({currentDeviceList.length}) ↗
+                        </button>
+                      </div>
                     </div>
 
-                    <div className="mt-3 space-y-2">
-                      {(analyticsData?.webAnalytics?.operatingSystems || [
-                        { name: "iOS", percentage: 32 },
-                        { name: "Windows", percentage: 22 },
-                        { name: "Mac", percentage: 18 },
-                        { name: "Android", percentage: 16 },
-                        { name: "Ubuntu", percentage: 12 },
-                      ]).map((item: any) => (
-                        <div key={item.name} className="relative rounded-md overflow-hidden bg-[var(--surface)] text-xs font-mono py-1.5 px-2">
-                          <div
-                            className="absolute inset-y-0 left-0 bg-blue-500/10 border-r border-blue-500/30"
-                            style={{ width: `${item.percentage}%` }}
-                          />
-                          <div className="relative flex items-center justify-between">
-                            <span className="text-[var(--text-primary)]">{item.name}</span>
-                            <span className="font-bold text-[var(--text-primary)]">{item.percentage}%</span>
+                    {/* Breakdown 3: Operating Systems */}
+                    <div className="technical-card rounded-xl p-4 flex flex-col justify-between">
+                      <div>
+                        <div className="flex items-center justify-between pb-2.5 border-b border-[var(--border)] text-xs font-mono">
+                          <span className="font-bold text-[var(--text-primary)]">Operating Systems</span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] text-[var(--text-muted)] tracking-wider uppercase">VISITORS</span>
+                            <button
+                              type="button"
+                              onClick={() => { setWaExpandedModal("os"); setWaModalSearch(""); }}
+                              className="p-1 rounded text-[var(--text-muted)] hover:text-blue-400 hover:bg-blue-500/10 cursor-pointer transition-colors"
+                              title="Lihat Full & Scroll Operating Systems"
+                            >
+                              <Maximize2 className="w-3.5 h-3.5" />
+                            </button>
                           </div>
                         </div>
-                      ))}
+
+                        {/* Scrollable list inside card */}
+                        <div className="mt-3 space-y-2 max-h-56 overflow-y-auto pr-1.5 scrollbar-thin select-none">
+                          {osList.map((item: any, idx: number) => (
+                            <div key={item.name + idx} className="relative rounded-md overflow-hidden bg-[var(--surface)] text-xs font-mono py-1.5 px-2 hover:bg-[var(--surface-hover)] transition-colors">
+                              <div
+                                className="absolute inset-y-0 left-0 bg-blue-500/10 border-r border-blue-500/30"
+                                style={{ width: `${Math.max(item.percentage, 2)}%` }}
+                              />
+                              <div className="relative flex items-center justify-between">
+                                <span className="text-[var(--text-primary)]">{item.name}</span>
+                                <span className="font-bold text-[var(--text-primary)]">{item.percentage}%</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="pt-2.5 mt-2 border-t border-[var(--border)] flex items-center justify-between text-[11px] font-mono text-[var(--text-muted)]">
+                        <span>Total {osList.length} OS</span>
+                        <button
+                          type="button"
+                          onClick={() => { setWaExpandedModal("os"); setWaModalSearch(""); }}
+                          className="text-blue-400 hover:text-blue-300 hover:underline cursor-pointer flex items-center gap-1 font-semibold"
+                        >
+                          Lihat Full ({osList.length}) ↗
+                        </button>
+                      </div>
                     </div>
                   </div>
-                </div>
-              </div>
+                );
+              })()}
             </div>
+
+            {/* Modal: Lihat Full & Scrollable View for Web Analytics Breakdown */}
+            {waExpandedModal && (() => {
+              let modalTitle = "";
+              let modalSubtitle = "";
+              let modalItems: Array<{ name: string; flag?: string; percentage: number; count?: number; code?: string }> = [];
+
+              if (waExpandedModal === "countries") {
+                modalTitle = "Daftar Lengkap Negara Pengunjung";
+                modalSubtitle = "Distribusi geolokasi dan asal pengunjung platform ZailTrack berdasarkan IP & Vercel Telemetry";
+                modalItems = analyticsData?.webAnalytics?.countries || [
+                  { name: "United States", flag: "🇺🇸", percentage: 46, count: 120, code: "US" },
+                  { name: "Indonesia", flag: "🇮🇩", percentage: 29, count: 75, code: "ID" },
+                  { name: "Singapore", flag: "🇸🇬", percentage: 10, count: 26, code: "SG" },
+                  { name: "United Kingdom", flag: "🇬🇧", percentage: 9, count: 23, code: "GB" },
+                  { name: "Germany", flag: "🇩🇪", percentage: 4, count: 10, code: "DE" },
+                ];
+              } else if (waExpandedModal === "devices") {
+                modalTitle = "Daftar Lengkap Perangkat (Devices)";
+                modalSubtitle = "Breakdown kategori perangkat yang digunakan pengunjung saat mengakses web platform";
+                modalItems = analyticsData?.webAnalytics?.devices || [
+                  { name: "Desktop", percentage: 55, count: 143 },
+                  { name: "Mobile", percentage: 35, count: 91 },
+                  { name: "Tablet", percentage: 10, count: 26 },
+                ];
+              } else if (waExpandedModal === "browsers") {
+                modalTitle = "Daftar Lengkap Peramban (Browsers)";
+                modalSubtitle = "Breakdown jenis aplikasi web browser yang digunakan pengunjung platform";
+                modalItems = analyticsData?.webAnalytics?.browsers || [
+                  { name: "Chrome", percentage: 58, count: 151 },
+                  { name: "Safari", percentage: 24, count: 62 },
+                  { name: "Edge", percentage: 10, count: 26 },
+                  { name: "Firefox", percentage: 8, count: 21 },
+                ];
+              } else if (waExpandedModal === "os") {
+                modalTitle = "Daftar Lengkap Sistem Operasi (OS)";
+                modalSubtitle = "Breakdown sistem operasi perangkat yang mengakses platform ZailTrack";
+                modalItems = analyticsData?.webAnalytics?.operatingSystems || [
+                  { name: "Windows", percentage: 30, count: 78 },
+                  { name: "iOS", percentage: 24, count: 62 },
+                  { name: "Android", percentage: 20, count: 52 },
+                  { name: "Mac", percentage: 15, count: 39 },
+                  { name: "Ubuntu", percentage: 11, count: 29 },
+                ];
+              }
+
+              const filteredItems = modalItems.filter((item) =>
+                item.name.toLowerCase().includes(waModalSearch.toLowerCase()) ||
+                (item.code && item.code.toLowerCase().includes(waModalSearch.toLowerCase()))
+              );
+
+              return (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
+                  <div className="technical-card w-full max-w-2xl max-h-[85vh] rounded-2xl flex flex-col relative border border-[var(--border)] shadow-2xl overflow-hidden">
+                    {/* Header */}
+                    <div className="p-5 border-b border-[var(--border)] relative bg-[var(--surface-dark,#0f1115)]">
+                      <button
+                        onClick={() => setWaExpandedModal(null)}
+                        className="absolute top-5 right-5 p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--surface)] transition-colors cursor-pointer"
+                        title="Tutup Modal"
+                      >
+                        <X size={18} />
+                      </button>
+                      <div className="flex items-center gap-2">
+                        <span className="w-2.5 h-2.5 rounded-full bg-blue-500 animate-pulse" />
+                        <h3 className="text-base font-bold text-[var(--text-primary)]">{modalTitle}</h3>
+                      </div>
+                      <p className="text-xs text-[var(--text-secondary)] font-mono mt-1 pr-8">
+                        {modalSubtitle}
+                      </p>
+
+                      {/* Search bar inside modal */}
+                      <div className="mt-4 flex items-center gap-3">
+                        <div className="relative flex-1">
+                          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
+                          <input
+                            type="text"
+                            value={waModalSearch}
+                            onChange={(e) => setWaModalSearch(e.target.value)}
+                            placeholder="Cari item dalam daftar..."
+                            className="technical-input w-full pl-9 pr-3 py-1.5 rounded-lg text-xs font-mono"
+                          />
+                        </div>
+                        <div className="text-[11px] font-mono text-[var(--text-muted)] shrink-0 px-2.5 py-1.5 rounded-md bg-[var(--surface)] border border-[var(--border)]">
+                          {filteredItems.length} dari {modalItems.length} entri
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Scrollable list */}
+                    <div className="flex-1 overflow-y-auto p-4 space-y-2.5 select-none scrollbar-thin">
+                      {filteredItems.length === 0 ? (
+                        <div className="py-12 text-center text-xs font-mono text-[var(--text-muted)]">
+                          Tidak ada data yang cocok dengan &quot;{waModalSearch}&quot;
+                        </div>
+                      ) : (
+                        filteredItems.map((item, index) => (
+                          <div
+                            key={item.name + index}
+                            className="relative rounded-lg overflow-hidden bg-[var(--surface)] border border-[var(--border)] hover:border-blue-500/40 text-xs font-mono p-3 transition-colors"
+                          >
+                            {/* Background progress bar */}
+                            <div
+                              className="absolute inset-y-0 left-0 bg-blue-500/10 border-r-2 border-blue-500/40"
+                              style={{ width: `${Math.max(item.percentage, 2)}%` }}
+                            />
+                            <div className="relative flex items-center justify-between gap-4">
+                              <div className="flex items-center gap-3 min-w-0 flex-1">
+                                <span className={`w-6 h-6 shrink-0 rounded flex items-center justify-center font-bold text-[10px] ${
+                                  index === 0
+                                    ? "bg-amber-500/20 text-amber-300 border border-amber-500/40"
+                                    : index === 1
+                                    ? "bg-zinc-400/20 text-zinc-300 border border-zinc-400/40"
+                                    : index === 2
+                                    ? "bg-amber-700/20 text-amber-500 border border-amber-700/40"
+                                    : "bg-[var(--surface-dark,#16191f)] text-[var(--text-muted)] border border-[var(--border)]"
+                                }`}>
+                                  #{index + 1}
+                                </span>
+                                {item.flag && <span className="text-lg shrink-0">{item.flag}</span>}
+                                <div className="min-w-0 flex-1">
+                                  <div className="font-semibold text-[var(--text-primary)] truncate flex items-center gap-2">
+                                    <span>{item.name}</span>
+                                    {item.code && (
+                                      <span className="text-[10px] px-1.5 py-0.2 rounded bg-[var(--surface-dark,#16191f)] border border-[var(--border)] text-[var(--text-muted)] font-mono">
+                                        {item.code}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-4 shrink-0 text-right">
+                                {typeof item.count === "number" && item.count > 0 && (
+                                  <span className="text-[11px] text-[var(--text-muted)] hidden sm:inline">
+                                    {item.count.toLocaleString()} visits
+                                  </span>
+                                )}
+                                <span className="font-bold text-sm text-blue-400 min-w-[44px] text-right">
+                                  {item.percentage}%
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+
+                    {/* Footer */}
+                    <div className="p-3.5 border-t border-[var(--border)] bg-[var(--surface-dark,#0f1115)] flex items-center justify-between text-xs font-mono">
+                      <span className="text-[11px] text-[var(--text-muted)]">
+                        Total {modalItems.length} entri terdata &bull; Scrollable
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setWaExpandedModal(null)}
+                        className="px-4 py-1.5 rounded-lg bg-[var(--surface)] hover:bg-[var(--surface-hover)] border border-[var(--border)] text-[var(--text-primary)] font-semibold transition-colors cursor-pointer"
+                      >
+                        Tutup
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
 
             {/* Visual Analytics Chart: 14-Day Platform Cashflow Activity */}
             <div className="technical-card rounded-2xl p-5 space-y-4">
