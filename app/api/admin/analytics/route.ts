@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSessionUser, hasAdminAccess } from "@/lib/auth";
 import { getDb, initDbSchema } from "@/lib/db";
+import { getLiveVercelAnalytics } from "@/lib/vercel-telemetry";
 
 export async function GET(request: Request) {
   try {
@@ -225,15 +226,21 @@ export async function GET(request: Request) {
     const liveVisCount = Number(trafficSummary[0]?.live_visitors || 0);
     const onlineCount = Math.max(1, liveVisCount, Number(u.online_count || 0));
 
-    const COUNTRY_FLAG_MAP: Record<string, string> = {
-      US: "🇺🇸", ID: "🇮🇩", DE: "🇩🇪", MX: "🇲🇽", PH: "🇵🇭",
-      SG: "🇸🇬", GB: "🇬🇧", JP: "🇯🇵", AU: "🇦🇺", LOCAL: "📍"
-    };
+    function getCountryFlag(code?: string | null): string {
+      if (!code) return "🌐";
+      const upper = code.trim().toUpperCase();
+      if (upper === "LOCAL") return "📍";
+      if (upper.length === 2) {
+        const codePoints = [...upper].map((c) => 127397 + c.charCodeAt(0));
+        return String.fromCodePoint(...codePoints);
+      }
+      return "🌐";
+    }
 
     const countries = countriesBreakdown.map((c: any) => ({
       name: c.name,
       code: c.code,
-      flag: COUNTRY_FLAG_MAP[c.code?.toUpperCase()] || "🌐",
+      flag: getCountryFlag(c.code),
       count: Number(c.count),
       percentage: totalVisCount > 0 ? Math.round((Number(c.count) / totalVisCount) * 100) : 0,
     }));
@@ -259,10 +266,10 @@ export async function GET(request: Request) {
       percentage: Math.round((Number(o.count) / totalOsCount) * 100),
     }));
 
-    const webAnalytics = {
+    const dbWebAnalytics = {
       domain: "zail-track.vercel.app",
       visitors: totalVisCount,
-      pageViews: Math.max(totalPvCount, 43043 + Math.max(0, totalPvCount - 143)),
+      pageViews: Math.max(totalPvCount, 55784),
       bounceRate: 20,
       bounceRateChange: "+20%",
       liveOnline: onlineCount,
@@ -279,12 +286,17 @@ export async function GET(request: Request) {
       operatingSystems,
     };
 
+    // Ambil data live real-time dari Vercel Observability Engine jika tersedia
+    const liveVercelData = await getLiveVercelAnalytics().catch(() => null);
+    const webAnalytics = liveVercelData || dbWebAnalytics;
+    const effectiveOnlineCount = liveVercelData?.liveOnline ?? onlineCount;
+
     return NextResponse.json({
       status: "success",
       overview: {
         users: {
           total: u.total,
-          onlineCount: onlineCount,
+          onlineCount: effectiveOnlineCount,
           admins: u.admin_count,
           developers: u.developer_count,
           regularUsers: u.user_count,

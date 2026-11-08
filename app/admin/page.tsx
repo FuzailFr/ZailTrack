@@ -1122,8 +1122,8 @@ export default function AdminDashboardPage() {
                             style={{ width: `${item.percentage}%` }}
                           />
                           <div className="relative flex items-center justify-between">
-                            <div className="flex items-center gap-2 truncate max-w-[180px]">
-                              <span>{item.flag}</span>
+                            <div className="flex items-center gap-2 truncate flex-1 min-w-0 pr-2">
+                              <span className="text-sm shrink-0">{item.flag}</span>
                               <span className="truncate text-[var(--text-primary)]">{item.name}</span>
                             </div>
                             <span className="font-bold text-[var(--text-primary)]">{item.percentage}%</span>
