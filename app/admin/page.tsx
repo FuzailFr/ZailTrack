@@ -2188,7 +2188,13 @@ export default function AdminDashboardPage() {
                             <td className="py-2.5 px-4">
                               <span className="px-1.5 py-0.5 rounded text-[10px] bg-sky-500/10 text-sky-400 border border-sky-500/30 inline-flex items-center gap-1">
                                 <span>📍</span>
-                                <span>{log.region || "Localhost (ID)"}</span>
+                                <span>
+                                  {log.region && !log.region.startsWith("Localhost")
+                                    ? log.region
+                                    : log.ip_address === "127.0.0.1" || log.ip_address === "::1" || !log.ip_address
+                                    ? "Localhost (Dev)"
+                                    : log.region || "Ashburn, US"}
+                                </span>
                               </span>
                             </td>
                           </tr>
@@ -2291,7 +2297,13 @@ export default function AdminDashboardPage() {
                             <td className="py-2.5 px-4">
                               <span className="px-1.5 py-0.5 rounded text-[10px] bg-sky-500/10 text-sky-400 border border-sky-500/30 inline-flex items-center gap-1">
                                 <span>📍</span>
-                                <span>{log.region || "Localhost (ID)"}</span>
+                                <span>
+                                  {log.region && !log.region.startsWith("Localhost")
+                                    ? log.region
+                                    : log.ip_address === "127.0.0.1" || log.ip_address === "::1" || !log.ip_address
+                                    ? "Localhost (Dev)"
+                                    : log.region || "Ashburn, US"}
+                                </span>
                               </span>
                             </td>
                           </tr>

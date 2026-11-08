@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { getDb, initDbSchema } from "@/lib/db";
-import { checkRateLimit, getClientIp } from "@/lib/security";
+import { checkRateLimit, getClientIp, getClientRegion } from "@/lib/security";
 import { logAudit } from "@/lib/logger";
 
 export async function POST(request: Request) {
   const ip = getClientIp(request.headers);
+  const region = getClientRegion(request.headers, ip);
   const userAgent = request.headers.get("user-agent") || "";
 
   // Rate limit: maks 10 percobaan per 15 menit
@@ -55,6 +56,7 @@ export async function POST(request: Request) {
       await logAudit({
         action: "auth:reset_password_failed",
         ipAddress: ip,
+        region,
         userAgent,
         status: "warning",
         details: { reason: "Invalid or expired token" },
@@ -81,6 +83,7 @@ export async function POST(request: Request) {
       role: user.role,
       action: "auth:reset_password_completed",
       ipAddress: ip,
+      region,
       userAgent,
       status: "success",
     });

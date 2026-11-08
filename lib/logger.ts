@@ -30,10 +30,47 @@ function sanitizeDetails(data: any): any {
   return clone;
 }
 
+function isPrivateIp(ip?: string | null): boolean {
+  if (!ip) return true;
+  return (
+    ip === "127.0.0.1" ||
+    ip === "::1" ||
+    ip === "localhost" ||
+    ip.startsWith("192.168.") ||
+    ip.startsWith("10.") ||
+    ip.startsWith("172.")
+  );
+}
+
 export async function logAudit(input: AuditLogInput): Promise<void> {
   try {
     const sql = getDb();
     const detailsJson = input.details ? JSON.stringify(sanitizeDetails(input.details)) : null;
+
+    let region = input.region;
+    if (!region) {
+      if (!input.ipAddress || isPrivateIp(input.ipAddress)) {
+        region = "Localhost (Dev)";
+      } else {
+        // Coba cari region yang sudah pernah tercatat untuk IP publik ini
+        try {
+          const known = await sql`
+            SELECT region FROM audit_logs 
+            WHERE ip_address = ${input.ipAddress} 
+              AND region IS NOT NULL 
+              AND region NOT LIKE 'Localhost%' 
+            ORDER BY id DESC LIMIT 1
+          `;
+          if (known && known[0]?.region) {
+            region = known[0].region;
+          } else {
+            region = input.ipAddress.startsWith("44.") ? "Ashburn, US" : "Indonesia (ID)";
+          }
+        } catch {
+          region = input.ipAddress.startsWith("44.") ? "Ashburn, US" : "Indonesia (ID)";
+        }
+      }
+    }
 
     await sql`
       INSERT INTO audit_logs (
@@ -47,7 +84,7 @@ export async function logAudit(input: AuditLogInput): Promise<void> {
         ${input.targetId ? String(input.targetId) : null},
         ${detailsJson ? sql`${detailsJson}::jsonb` : null},
         ${input.ipAddress || null},
-        ${input.region || "Localhost (ID)"},
+        ${region},
         ${input.userAgent || null},
         ${input.status || "success"}
       )

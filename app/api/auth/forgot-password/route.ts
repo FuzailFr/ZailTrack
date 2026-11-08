@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
 import { getDb, initDbSchema } from "@/lib/db";
-import { checkRateLimit, generateOneTimeToken, getClientIp } from "@/lib/security";
+import { checkRateLimit, generateOneTimeToken, getClientIp, getClientRegion } from "@/lib/security";
 import { logAudit } from "@/lib/logger";
 
 export async function POST(request: Request) {
   const ip = getClientIp(request.headers);
+  const region = getClientRegion(request.headers, ip);
   const userAgent = request.headers.get("user-agent") || "";
 
   // Rate limit: maks 5 permintaan per 10 menit per IP
@@ -46,6 +47,7 @@ export async function POST(request: Request) {
         action: "auth:forgot_password_not_found",
         username,
         ipAddress: ip,
+        region,
         userAgent,
         status: "warning",
       });
@@ -79,6 +81,7 @@ export async function POST(request: Request) {
       username: user.username,
       action: "auth:forgot_password_requested",
       ipAddress: ip,
+      region,
       userAgent,
       status: "success",
       details: { expiresAt: expiresAt.toISOString() },

@@ -2,11 +2,12 @@ import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { getDb, initDbSchema } from "@/lib/db";
 import { setSessionCookie } from "@/lib/auth";
-import { checkRateLimit, getClientIp } from "@/lib/security";
+import { checkRateLimit, getClientIp, getClientRegion } from "@/lib/security";
 import { logAudit } from "@/lib/logger";
 
 export async function POST(request: Request) {
   const ip = getClientIp(request.headers);
+  const region = getClientRegion(request.headers, ip);
   const userAgent = request.headers.get("user-agent") || "";
 
   // Rate limit pendaftaran: maks 5 akun per IP per 10 menit
@@ -96,6 +97,7 @@ export async function POST(request: Request) {
       role: newUser.role,
       action: "auth:register",
       ipAddress: ip,
+      region,
       userAgent,
       status: "success",
     });
