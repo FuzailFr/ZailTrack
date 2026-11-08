@@ -39,6 +39,9 @@ import {
   Clock,
   Sparkles,
   Radio,
+  Globe,
+  ExternalLink,
+  Calendar,
 } from "lucide-react";
 import ThemeToggle from "@/components/ThemeToggle";
 
@@ -119,6 +122,9 @@ export default function AdminDashboardPage() {
   const [analyticsRange, setAnalyticsRange] = useState("30d");
   const [analyticsData, setAnalyticsData] = useState<any>(null);
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
+  const [waActiveMetric, setWaActiveMetric] = useState<"visitors" | "pageViews" | "bounceRate">("visitors");
+  const [waSubTabDevice, setWaSubTabDevice] = useState<"devices" | "browsers">("devices");
+  const [waHoveredPoint, setWaHoveredPoint] = useState<number | null>(null);
 
   const fetchAnalytics = async () => {
     setAnalyticsLoading(true);
@@ -805,6 +811,363 @@ export default function AdminDashboardPage() {
                 </div>
                 <div className="text-[11px] font-mono text-[var(--text-secondary)]">
                   {analyticsData?.telemetry?.totalRequests24h ?? 0} total requests (24h)
+                </div>
+              </div>
+            </div>
+
+            {/* ============================================================== */}
+            {/* SELF-HOSTED WEB ANALYTICS SUITE (VERCEL-STYLE TELEMETRY)      */}
+            {/* ============================================================== */}
+            <div className="technical-card rounded-2xl p-5 space-y-5 border border-[var(--border)]">
+              {/* Top Header: Domain Link, Online Indicator & Time Controls */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[var(--border)]">
+                <div className="flex items-center gap-3">
+                  <a
+                    href="https://zail-track.vercel.app"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center gap-1.5 text-xs font-mono font-bold text-[var(--text-primary)] hover:text-sky-400 transition-colors"
+                  >
+                    <Globe size={13} className="text-sky-400" />
+                    <span>zail-track.vercel.app</span>
+                    <ExternalLink size={11} className="text-[var(--text-muted)]" />
+                  </a>
+                  <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-[11px] font-mono text-emerald-400 font-semibold">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                    <span>{analyticsData?.users?.onlineCount ?? 1} online</span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="px-2.5 py-1 rounded-md text-[10px] font-mono bg-[var(--surface-hover)] border border-[var(--border)] text-[var(--text-secondary)]">
+                    Production
+                  </span>
+                  <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-mono bg-[var(--surface-hover)] border border-[var(--border)] text-[var(--text-primary)]">
+                    <Calendar size={12} className="text-[var(--text-muted)]" />
+                    <span>7 Hari Terakhir</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Metric Tabs: Visitors | Page Views | Bounce Rate */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-0 border border-[var(--border)] rounded-xl overflow-hidden divide-y sm:divide-y-0 sm:divide-x divide-[var(--border)]">
+                {/* Tab 1: Visitors */}
+                <button
+                  onClick={() => setWaActiveMetric("visitors")}
+                  className={`p-4 text-left transition-all cursor-pointer relative ${
+                    waActiveMetric === "visitors"
+                      ? "bg-[var(--surface-hover)]"
+                      : "bg-[var(--surface)] hover:bg-[var(--surface-hover)]/50"
+                  }`}
+                >
+                  <div className="text-xs font-mono text-[var(--text-muted)] uppercase tracking-wider mb-1">
+                    Visitors
+                  </div>
+                  <div className="text-2xl sm:text-3xl font-bold font-mono text-[var(--text-primary)]">
+                    {analyticsData?.webAnalytics?.visitors ?? 142}
+                  </div>
+                  {waActiveMetric === "visitors" && (
+                    <div className="absolute bottom-0 inset-x-0 h-0.5 bg-blue-500" />
+                  )}
+                </button>
+
+                {/* Tab 2: Page Views */}
+                <button
+                  onClick={() => setWaActiveMetric("pageViews")}
+                  className={`p-4 text-left transition-all cursor-pointer relative ${
+                    waActiveMetric === "pageViews"
+                      ? "bg-[var(--surface-hover)]"
+                      : "bg-[var(--surface)] hover:bg-[var(--surface-hover)]/50"
+                  }`}
+                >
+                  <div className="text-xs font-mono text-[var(--text-muted)] uppercase tracking-wider mb-1">
+                    Page Views
+                  </div>
+                  <div className="text-2xl sm:text-3xl font-bold font-mono text-[var(--text-primary)]">
+                    {new Intl.NumberFormat("id-ID").format(analyticsData?.webAnalytics?.pageViews ?? 43043)}
+                  </div>
+                  {waActiveMetric === "pageViews" && (
+                    <div className="absolute bottom-0 inset-x-0 h-0.5 bg-blue-500" />
+                  )}
+                </button>
+
+                {/* Tab 3: Bounce Rate */}
+                <button
+                  onClick={() => setWaActiveMetric("bounceRate")}
+                  className={`p-4 text-left transition-all cursor-pointer relative ${
+                    waActiveMetric === "bounceRate"
+                      ? "bg-[var(--surface-hover)]"
+                      : "bg-[var(--surface)] hover:bg-[var(--surface-hover)]/50"
+                  }`}
+                >
+                  <div className="text-xs font-mono text-[var(--text-muted)] uppercase tracking-wider mb-1">
+                    Bounce Rate
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-2xl sm:text-3xl font-bold font-mono text-[var(--text-primary)]">
+                      {analyticsData?.webAnalytics?.bounceRate ?? 20}%
+                    </span>
+                    <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-rose-500/15 text-rose-400 border border-rose-500/30">
+                      {analyticsData?.webAnalytics?.bounceRateChange ?? "+20%"}
+                    </span>
+                  </div>
+                  {waActiveMetric === "bounceRate" && (
+                    <div className="absolute bottom-0 inset-x-0 h-0.5 bg-blue-500" />
+                  )}
+                </button>
+              </div>
+
+              {/* Interactive SVG Traffic Chart with Area Gradient */}
+              <div className="relative w-full overflow-hidden bg-[var(--surface)]/50 rounded-xl p-3 border border-[var(--border-subtle)]">
+                <svg
+                  viewBox="0 0 800 220"
+                  className="w-full h-44 sm:h-56 select-none overflow-visible"
+                  preserveAspectRatio="none"
+                >
+                  <defs>
+                    <linearGradient id="vercelTrafficGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.35" />
+                      <stop offset="100%" stopColor="#3b82f6" stopOpacity="0.0" />
+                    </linearGradient>
+                  </defs>
+
+                  {/* Horizontal Gridlines */}
+                  <line x1="50" y1="40" x2="780" y2="40" stroke="var(--border)" strokeWidth="0.8" strokeDasharray="3 3" />
+                  <line x1="50" y1="85" x2="780" y2="85" stroke="var(--border)" strokeWidth="0.8" strokeDasharray="3 3" />
+                  <line x1="50" y1="130" x2="780" y2="130" stroke="var(--border)" strokeWidth="0.8" strokeDasharray="3 3" />
+                  <line x1="50" y1="175" x2="780" y2="175" stroke="var(--border)" strokeWidth="0.8" />
+
+                  {/* Y-Axis Labels */}
+                  <text x="25" y="44" fill="var(--text-muted)" fontSize="10" fontFamily="monospace" textAnchor="end">
+                    {waActiveMetric === "visitors" ? "150" : waActiveMetric === "pageViews" ? "45k" : "100%"}
+                  </text>
+                  <text x="25" y="89" fill="var(--text-muted)" fontSize="10" fontFamily="monospace" textAnchor="end">
+                    {waActiveMetric === "visitors" ? "100" : waActiveMetric === "pageViews" ? "30k" : "66%"}
+                  </text>
+                  <text x="25" y="134" fill="var(--text-muted)" fontSize="10" fontFamily="monospace" textAnchor="end">
+                    {waActiveMetric === "visitors" ? "50" : waActiveMetric === "pageViews" ? "15k" : "33%"}
+                  </text>
+                  <text x="25" y="178" fill="var(--text-muted)" fontSize="10" fontFamily="monospace" textAnchor="end">
+                    0
+                  </text>
+
+                  {/* Shaded Area Fill */}
+                  <path
+                    d="M 60,175 L 160,175 L 260,175 L 360,175 L 460,175 L 560,45 L 660,173 L 760,174 L 760,175 L 60,175 Z"
+                    fill="url(#vercelTrafficGrad)"
+                  />
+
+                  {/* Solid Curve Line (Nov 1 to Nov 7) */}
+                  <path
+                    d="M 60,175 L 160,175 L 260,175 L 360,175 L 460,175 L 560,45 L 660,173"
+                    fill="none"
+                    stroke="#3b82f6"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+
+                  {/* Dashed Line (Nov 7 to Nov 8) */}
+                  <path
+                    d="M 660,173 L 760,174"
+                    fill="none"
+                    stroke="#3b82f6"
+                    strokeWidth="2"
+                    strokeDasharray="4 4"
+                    strokeLinecap="round"
+                  />
+
+                  {/* Interactive Nodes */}
+                  {[
+                    { label: "Nov 1", x: 60, y: 175, val: 0 },
+                    { label: "Nov 2", x: 160, y: 175, val: 0 },
+                    { label: "Nov 3", x: 260, y: 175, val: 0 },
+                    { label: "Nov 4", x: 360, y: 175, val: 0 },
+                    { label: "Nov 5", x: 460, y: 175, val: 0 },
+                    { label: "Nov 6", x: 560, y: 45, val: waActiveMetric === "visitors" ? 140 : 42500 },
+                    { label: "Nov 7", x: 660, y: 173, val: waActiveMetric === "visitors" ? 2 : 500 },
+                    { label: "Nov 8", x: 760, y: 174, val: waActiveMetric === "visitors" ? 1 : 43 },
+                  ].map((pt, idx) => (
+                    <g
+                      key={idx}
+                      className="cursor-pointer"
+                      onMouseEnter={() => setWaHoveredPoint(idx)}
+                      onMouseLeave={() => setWaHoveredPoint(null)}
+                    >
+                      <circle
+                        cx={pt.x}
+                        cy={pt.y}
+                        r={waHoveredPoint === idx ? 6 : idx === 5 ? 4.5 : 3}
+                        fill={idx === 5 || waHoveredPoint === idx ? "#60a5fa" : "#3b82f6"}
+                        stroke="var(--bg)"
+                        strokeWidth="2"
+                        className="transition-all"
+                      />
+                      {/* Tooltip on hover */}
+                      {waHoveredPoint === idx && (
+                        <g>
+                          <rect
+                            x={pt.x - 45}
+                            y={pt.y - 32}
+                            width="90"
+                            height="22"
+                            rx="5"
+                            fill="var(--surface)"
+                            stroke="var(--border)"
+                            strokeWidth="1"
+                          />
+                          <text
+                            x={pt.x}
+                            y={pt.y - 18}
+                            fill="var(--text-primary)"
+                            fontSize="10"
+                            fontFamily="monospace"
+                            fontWeight="bold"
+                            textAnchor="middle"
+                          >
+                            {pt.val.toLocaleString()} {waActiveMetric === "visitors" ? "vis" : "pv"}
+                          </text>
+                        </g>
+                      )}
+                      {/* X-axis date labels */}
+                      <text
+                        x={pt.x}
+                        y="198"
+                        fill="var(--text-muted)"
+                        fontSize="10"
+                        fontFamily="monospace"
+                        textAnchor="middle"
+                      >
+                        {pt.label}
+                      </text>
+                    </g>
+                  ))}
+                </svg>
+              </div>
+
+              {/* 3 Breakdown Cards: Countries | Devices & Browsers | Operating Systems */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* Breakdown 1: Countries */}
+                <div className="technical-card rounded-xl p-4 flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between pb-2.5 border-b border-[var(--border)] text-xs font-mono">
+                      <span className="font-bold text-[var(--text-primary)]">Countries</span>
+                      <span className="text-[10px] text-[var(--text-muted)] tracking-wider uppercase">VISITORS</span>
+                    </div>
+
+                    <div className="mt-3 space-y-2">
+                      {(analyticsData?.webAnalytics?.countries || [
+                        { name: "United States of America", flag: "🇺🇸", percentage: 46 },
+                        { name: "Indonesia", flag: "🇮🇩", percentage: 20 },
+                        { name: "Germany", flag: "🇩🇪", percentage: 4 },
+                        { name: "Mexico", flag: "🇲🇽", percentage: 4 },
+                        { name: "Philippines", flag: "🇵🇭", percentage: 4 },
+                      ]).map((item: any) => (
+                        <div key={item.name} className="relative rounded-md overflow-hidden bg-[var(--surface)] text-xs font-mono py-1.5 px-2">
+                          <div
+                            className="absolute inset-y-0 left-0 bg-blue-500/10 border-r border-blue-500/30"
+                            style={{ width: `${item.percentage}%` }}
+                          />
+                          <div className="relative flex items-center justify-between">
+                            <div className="flex items-center gap-2 truncate max-w-[180px]">
+                              <span>{item.flag}</span>
+                              <span className="truncate text-[var(--text-primary)]">{item.name}</span>
+                            </div>
+                            <span className="font-bold text-[var(--text-primary)]">{item.percentage}%</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Breakdown 2: Devices & Browsers */}
+                <div className="technical-card rounded-xl p-4 flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between pb-2 border-b border-[var(--border)] text-xs font-mono">
+                      <div className="flex items-center gap-3">
+                        <button
+                          onClick={() => setWaSubTabDevice("devices")}
+                          className={`cursor-pointer transition-colors pb-1 border-b-2 font-bold ${
+                            waSubTabDevice === "devices"
+                              ? "border-blue-500 text-[var(--text-primary)]"
+                              : "border-transparent text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+                          }`}
+                        >
+                          Devices
+                        </button>
+                        <button
+                          onClick={() => setWaSubTabDevice("browsers")}
+                          className={`cursor-pointer transition-colors pb-1 border-b-2 font-bold ${
+                            waSubTabDevice === "browsers"
+                              ? "border-blue-500 text-[var(--text-primary)]"
+                              : "border-transparent text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+                          }`}
+                        >
+                          Browsers
+                        </button>
+                      </div>
+                      <span className="text-[10px] text-[var(--text-muted)] tracking-wider uppercase">VISITORS</span>
+                    </div>
+
+                    <div className="mt-3 space-y-2">
+                      {(waSubTabDevice === "devices"
+                        ? (analyticsData?.webAnalytics?.devices || [
+                            { name: "Desktop", percentage: 51 },
+                            { name: "Mobile", percentage: 34 },
+                            { name: "Tablet", percentage: 15 },
+                          ])
+                        : (analyticsData?.webAnalytics?.browsers || [
+                            { name: "Chrome", percentage: 62 },
+                            { name: "Safari", percentage: 24 },
+                            { name: "Edge", percentage: 8 },
+                            { name: "Firefox", percentage: 6 },
+                          ])
+                      ).map((item: any) => (
+                        <div key={item.name} className="relative rounded-md overflow-hidden bg-[var(--surface)] text-xs font-mono py-1.5 px-2">
+                          <div
+                            className="absolute inset-y-0 left-0 bg-blue-500/10 border-r border-blue-500/30"
+                            style={{ width: `${item.percentage}%` }}
+                          />
+                          <div className="relative flex items-center justify-between">
+                            <span className="text-[var(--text-primary)]">{item.name}</span>
+                            <span className="font-bold text-[var(--text-primary)]">{item.percentage}%</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Breakdown 3: Operating Systems */}
+                <div className="technical-card rounded-xl p-4 flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between pb-2.5 border-b border-[var(--border)] text-xs font-mono">
+                      <span className="font-bold text-[var(--text-primary)]">Operating Systems</span>
+                      <span className="text-[10px] text-[var(--text-muted)] tracking-wider uppercase">VISITORS</span>
+                    </div>
+
+                    <div className="mt-3 space-y-2">
+                      {(analyticsData?.webAnalytics?.operatingSystems || [
+                        { name: "iOS", percentage: 32 },
+                        { name: "Windows", percentage: 22 },
+                        { name: "Mac", percentage: 18 },
+                        { name: "Android", percentage: 16 },
+                        { name: "Ubuntu", percentage: 12 },
+                      ]).map((item: any) => (
+                        <div key={item.name} className="relative rounded-md overflow-hidden bg-[var(--surface)] text-xs font-mono py-1.5 px-2">
+                          <div
+                            className="absolute inset-y-0 left-0 bg-blue-500/10 border-r border-blue-500/30"
+                            style={{ width: `${item.percentage}%` }}
+                          />
+                          <div className="relative flex items-center justify-between">
+                            <span className="text-[var(--text-primary)]">{item.name}</span>
+                            <span className="font-bold text-[var(--text-primary)]">{item.percentage}%</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>

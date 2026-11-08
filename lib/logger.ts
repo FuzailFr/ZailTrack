@@ -100,6 +100,13 @@ export interface TrafficLogInput {
   userId?: number | null;
   ipAddress?: string | null;
   region?: string | null;
+  country?: string | null;
+  countryCode?: string | null;
+  device?: string | null;
+  browser?: string | null;
+  os?: string | null;
+  isPageView?: boolean;
+  sessionId?: string | null;
 }
 
 export async function logTraffic(input: TrafficLogInput): Promise<void> {
@@ -107,7 +114,8 @@ export async function logTraffic(input: TrafficLogInput): Promise<void> {
     const sql = getDb();
     await sql`
       INSERT INTO traffic_logs (
-        endpoint, method, status_code, response_time_ms, user_id, ip_address, region
+        endpoint, method, status_code, response_time_ms, user_id, ip_address, region,
+        country, country_code, device, browser, os, is_page_view, session_id
       ) VALUES (
         ${input.endpoint.slice(0, 255)},
         ${input.method.slice(0, 10)},
@@ -115,7 +123,14 @@ export async function logTraffic(input: TrafficLogInput): Promise<void> {
         ${input.responseTimeMs},
         ${input.userId || null},
         ${input.ipAddress || null},
-        ${input.region || "Localhost (ID)"}
+        ${input.region || "Localhost (ID)"},
+        ${input.country || "Indonesia"},
+        ${input.countryCode || "ID"},
+        ${input.device || "Desktop"},
+        ${input.browser || "Chrome"},
+        ${input.os || "Windows"},
+        ${input.isPageView || false},
+        ${input.sessionId || null}
       )
     `;
   } catch (err) {

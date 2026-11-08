@@ -107,3 +107,87 @@ export function getClientRegion(headers: Headers, ip: string): string {
 
   return "ID (Indonesia)";
 }
+
+// Country Code Map
+const COUNTRY_MAP: Record<string, { name: string; flag: string }> = {
+  US: { name: "United States of America", flag: "🇺🇸" },
+  ID: { name: "Indonesia", flag: "🇮🇩" },
+  DE: { name: "Germany", flag: "🇩🇪" },
+  MX: { name: "Mexico", flag: "🇲🇽" },
+  PH: { name: "Philippines", flag: "🇵🇭" },
+  SG: { name: "Singapore", flag: "🇸🇬" },
+  MY: { name: "Malaysia", flag: "🇲🇾" },
+  GB: { name: "United Kingdom", flag: "🇬🇧" },
+  JP: { name: "Japan", flag: "🇯🇵" },
+  AU: { name: "Australia", flag: "🇦🇺" },
+  NL: { name: "Netherlands", flag: "🇳🇱" },
+  FR: { name: "France", flag: "🇫🇷" },
+  IN: { name: "India", flag: "🇮🇳" },
+  BR: { name: "Brazil", flag: "🇧🇷" },
+  CA: { name: "Canada", flag: "🇨🇦" },
+};
+
+// Helper detail negara & bendera
+export function getCountryDetails(headers: Headers, ip: string): { name: string; code: string; flag: string } {
+  const countryHeader = headers.get("x-vercel-ip-country") || headers.get("cf-ipcountry");
+  if (countryHeader && COUNTRY_MAP[countryHeader.toUpperCase()]) {
+    const info = COUNTRY_MAP[countryHeader.toUpperCase()];
+    return { name: info.name, code: countryHeader.toUpperCase(), flag: info.flag };
+  } else if (countryHeader) {
+    return { name: countryHeader, code: countryHeader.toUpperCase(), flag: "🌐" };
+  }
+
+  if (ip === "127.0.0.1" || ip.startsWith("192.168.") || ip.startsWith("10.") || ip.startsWith("172.")) {
+    return { name: "Localhost (Dev)", code: "LOCAL", flag: "📍" };
+  }
+
+  return { name: "Indonesia", code: "ID", flag: "🇮🇩" };
+}
+
+// User-Agent Parser: Device, OS, Browser
+export function parseUserAgent(uaString?: string | null): { device: string; os: string; browser: string } {
+  if (!uaString) {
+    return { device: "Desktop", os: "Windows", browser: "Chrome" };
+  }
+  const ua = uaString.toLowerCase();
+
+  // 1. Device
+  let device = "Desktop";
+  if (ua.includes("ipad") || ua.includes("tablet") || (ua.includes("android") && !ua.includes("mobile"))) {
+    device = "Tablet";
+  } else if (ua.includes("mobile") || ua.includes("iphone") || ua.includes("ipod") || ua.includes("android")) {
+    device = "Mobile";
+  }
+
+  // 2. Operating System
+  let os = "Other";
+  if (ua.includes("iphone") || ua.includes("ipad") || ua.includes("ipod") || ua.includes("ios")) {
+    os = "iOS";
+  } else if (ua.includes("android")) {
+    os = "Android";
+  } else if (ua.includes("windows") || ua.includes("win32") || ua.includes("win64")) {
+    os = "Windows";
+  } else if (ua.includes("macintosh") || ua.includes("mac os")) {
+    os = "Mac";
+  } else if (ua.includes("ubuntu")) {
+    os = "Ubuntu";
+  } else if (ua.includes("linux")) {
+    os = "Linux";
+  }
+
+  // 3. Browser
+  let browser = "Other";
+  if (ua.includes("edg/") || ua.includes("edge")) {
+    browser = "Edge";
+  } else if (ua.includes("opr/") || ua.includes("opera")) {
+    browser = "Opera";
+  } else if (ua.includes("chrome") && !ua.includes("edg") && !ua.includes("opr")) {
+    browser = "Chrome";
+  } else if (ua.includes("safari") && !ua.includes("chrome") && !ua.includes("android")) {
+    browser = "Safari";
+  } else if (ua.includes("firefox")) {
+    browser = "Firefox";
+  }
+
+  return { device, os, browser };
+}

@@ -1,8 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import Script from "next/script";
 import { Bricolage_Grotesque, Space_Mono } from "next/font/google";
-import { Analytics } from "@vercel/analytics/next";
-import { SpeedInsights } from "@vercel/speed-insights/next";
+import WebAnalytics from "@/components/WebAnalytics";
 import "./globals.css";
 
 const bricolage = Bricolage_Grotesque({
@@ -66,8 +65,7 @@ export default function RootLayout({
       </head>
       <body className="min-h-screen bg-[var(--bg)] text-[var(--text-primary)] antialiased">
         {children}
-        <Analytics />
-        <SpeedInsights />
+        <WebAnalytics />
       </body>
     </html>
   );

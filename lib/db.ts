@@ -112,7 +112,7 @@ export async function initDbSchema() {
       );
     `;
 
-    // 6. Tabel traffic_logs
+    // 6. Tabel traffic_logs & Web Analytics Engine
     await sql`
       CREATE TABLE IF NOT EXISTS traffic_logs (
         id SERIAL PRIMARY KEY,
@@ -123,8 +123,26 @@ export async function initDbSchema() {
         user_id INT REFERENCES users(id) ON DELETE SET NULL,
         ip_address VARCHAR(100),
         region VARCHAR(100) DEFAULT 'Localhost',
+        country VARCHAR(100) DEFAULT 'Indonesia',
+        country_code VARCHAR(10) DEFAULT 'ID',
+        device VARCHAR(50) DEFAULT 'Desktop',
+        browser VARCHAR(50) DEFAULT 'Chrome',
+        os VARCHAR(50) DEFAULT 'Windows',
+        is_page_view BOOLEAN DEFAULT false,
+        session_id VARCHAR(64),
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       );
+    `;
+
+    // Pastikan kolom analytics ada pada tabel existing
+    await sql`
+      ALTER TABLE traffic_logs ADD COLUMN IF NOT EXISTS country VARCHAR(100) DEFAULT 'Indonesia';
+      ALTER TABLE traffic_logs ADD COLUMN IF NOT EXISTS country_code VARCHAR(10) DEFAULT 'ID';
+      ALTER TABLE traffic_logs ADD COLUMN IF NOT EXISTS device VARCHAR(50) DEFAULT 'Desktop';
+      ALTER TABLE traffic_logs ADD COLUMN IF NOT EXISTS browser VARCHAR(50) DEFAULT 'Chrome';
+      ALTER TABLE traffic_logs ADD COLUMN IF NOT EXISTS os VARCHAR(50) DEFAULT 'Windows';
+      ALTER TABLE traffic_logs ADD COLUMN IF NOT EXISTS is_page_view BOOLEAN DEFAULT false;
+      ALTER TABLE traffic_logs ADD COLUMN IF NOT EXISTS session_id VARCHAR(64);
     `;
 
     // 7. Index performa tinggi

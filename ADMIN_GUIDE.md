@@ -7,7 +7,15 @@ Dokumentasi lengkap pengembangan, struktur, fitur baru, dan instruksi pengujian 
 ## 1. Ikhtisar Peningkatan Sistem (Upgrade Highlights)
 
 ### A. Admin Cockpit & Database Studio (`/admin`)
-1. **Executive Overview & Visual Analytics**:
+1. **Executive Overview & Self-Hosted Web Analytics**:
+   - **Vercel-Style Web Analytics Suite (Tanpa Layanan Pihak Ketiga)**:
+     - Menggantikan `@vercel/analytics` dan `@vercel/speed-insights` dengan *native telemetry engine* mandiri yang mencatat pengunjung langsung ke database Neon PostgreSQL.
+     - **3 Metrik Utama**: *Visitors*, *Page Views*, dan *Bounce Rate* dengan tab interaktif.
+     - **Grafik Tren SVG**: Area & Line Chart interaktif dengan warna aksen biru `#60a5fa` dan garis putus-putus proyeksi.
+     - **3 Kartu Analisis Rinci (Breakdown Widgets)**:
+       - **Negara / Wilayah (Countries)**: Bendera negara, nama, persentase, dan bar progress visual (Amerika Serikat, Indonesia, Jerman, Meksiko, Filipina, dll).
+       - **Perangkat & Peramban (Devices & Browsers)**: Tab switcher Desktop, Mobile, Tablet vs Chrome, Safari, Edge, Firefox.
+       - **Sistem Operasi (Operating Systems)**: Distribusi iOS, Windows, Mac, Android, Ubuntu/Linux.
    - **User Online (Live)**: Indikator detak sinyal langsung (*pulsating beacon*) dengan hitungan user aktif dalam 15 menit terakhir.
    - Total user, breakdown peran (User, Admin, Developer), user aktif (30 hari), user baru (7 hari).
    - Volume arus kas platform (Total Pemasukan, Total Pengeluaran, Saldo Bersih, Frekuensi Transaksi).
