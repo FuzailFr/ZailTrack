@@ -86,8 +86,11 @@ export async function POST(request: Request) {
     const sql = getDb();
 
     const startPing = performance.now();
-    // Eksekusi query governed
-    const results = await sql(finalQuery);
+    // Eksekusi query governed dengan batas aman timeout 5000ms
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error("Query timeout: waktu eksekusi query melebihi batas aman 5 detik.")), 5000)
+    );
+    const results: any = await Promise.race([sql(finalQuery), timeoutPromise]);
     const executionTimeMs = Math.round(performance.now() - startPing);
 
     const ip = getClientIp(request.headers);

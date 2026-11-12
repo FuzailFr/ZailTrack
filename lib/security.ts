@@ -101,11 +101,11 @@ export function getClientRegion(headers: Headers, ip: string): string {
   }
 
   // Jika koneksi lokal / private network
-  if (ip === "127.0.0.1" || ip.startsWith("192.168.") || ip.startsWith("10.") || ip.startsWith("172.")) {
-    return "Localhost (ID)";
+  if (ip === "127.0.0.1" || ip === "::1" || ip.startsWith("192.168.") || ip.startsWith("10.") || ip.startsWith("172.")) {
+    return "Localhost (Dev)";
   }
 
-  return "ID (Indonesia)";
+  return "Indonesia (ID)";
 }
 
 // Country Code Map
@@ -190,4 +190,120 @@ export function parseUserAgent(uaString?: string | null): { device: string; os: 
   }
 
   return { device, os, browser };
+}
+
+// -------------------------------------------------------------
+// Cryptographic Hash for Sensitive Tokens (SHA-256)
+// -------------------------------------------------------------
+export function hashToken(token: string): string {
+  return crypto.createHash("sha256").update(token).digest("hex");
+}
+
+// -------------------------------------------------------------
+// Account Lockout Protection (Brute-Force & Credential Stuffing)
+// -------------------------------------------------------------
+interface AccountLockRecord {
+  attempts: number;
+  lockedUntil?: number;
+}
+
+const accountLockStore = new Map<string, AccountLockRecord>();
+const MAX_FAILED_ATTEMPTS = 5;
+const LOCKOUT_DURATION_MS = 15 * 60 * 1000; // 15 menit lockout
+
+export function checkAccountLockout(username: string): { locked: boolean; remainingSec: number } {
+  const key = username.toLowerCase().trim();
+  const record = accountLockStore.get(key);
+  if (!record) return { locked: false, remainingSec: 0 };
+
+  const now = Date.now();
+  if (record.lockedUntil && record.lockedUntil > now) {
+    const remainingSec = Math.ceil((record.lockedUntil - now) / 1000);
+    return { locked: true, remainingSec };
+  }
+
+  // Jika waktu lockout sudah habis, reset attempts
+  if (record.lockedUntil && record.lockedUntil <= now) {
+    accountLockStore.delete(key);
+  }
+
+  return { locked: false, remainingSec: 0 };
+}
+
+export function recordFailedLogin(username: string): { locked: boolean; remainingSec: number; attempts: number } {
+  const key = username.toLowerCase().trim();
+  const now = Date.now();
+  const record = accountLockStore.get(key) || { attempts: 0 };
+
+  record.attempts += 1;
+
+  if (record.attempts >= MAX_FAILED_ATTEMPTS) {
+    record.lockedUntil = now + LOCKOUT_DURATION_MS;
+    accountLockStore.set(key, record);
+    return { locked: true, remainingSec: Math.ceil(LOCKOUT_DURATION_MS / 1000), attempts: record.attempts };
+  }
+
+  accountLockStore.set(key, record);
+  return { locked: false, remainingSec: 0, attempts: record.attempts };
+}
+
+export function resetFailedLogin(username: string): void {
+  const key = username.toLowerCase().trim();
+  accountLockStore.delete(key);
+}
+
+// -------------------------------------------------------------
+// Telegram Webhook Deduplication (Sliding Idempotency Window)
+// -------------------------------------------------------------
+const processedUpdatesStore = new Map<string, number>();
+
+export function isUpdateProcessed(updateId: number | string): boolean {
+  const key = String(updateId);
+  const now = Date.now();
+  const expireAt = processedUpdatesStore.get(key);
+  return expireAt !== undefined && expireAt > now;
+}
+
+export function markUpdateProcessed(updateId: number | string, ttlMs: number = 30 * 60 * 1000): void {
+  const key = String(updateId);
+  processedUpdatesStore.set(key, Date.now() + ttlMs);
+
+  // Bersihkan key usang jika map membesar > 1000 entri
+  if (processedUpdatesStore.size > 1000) {
+    const now = Date.now();
+    for (const [k, exp] of processedUpdatesStore.entries()) {
+      if (exp <= now) processedUpdatesStore.delete(k);
+    }
+  }
+}
+
+// -------------------------------------------------------------
+// CSRF Origin & Referer Validation
+// -------------------------------------------------------------
+export function isValidOrigin(request: Request): boolean {
+  // Hanya evaluasi mutasi state
+  const method = request.method.toUpperCase();
+  if (method === "GET" || method === "HEAD" || method === "OPTIONS") {
+    return true;
+  }
+
+  const origin = request.headers.get("origin");
+  const host = request.headers.get("host");
+
+  if (!origin || !host) {
+    // Jika tidak ada header origin (misal webhook server-to-server), loloskan jika endpoint webhook
+    const url = new URL(request.url);
+    if (url.pathname.startsWith("/api/telegram/") || url.pathname.startsWith("/api/sheets/")) {
+      return true;
+    }
+    // Jika panggilan langsung internal
+    return true;
+  }
+
+  try {
+    const originUrl = new URL(origin);
+    return originUrl.host === host;
+  } catch {
+    return false;
+  }
 }

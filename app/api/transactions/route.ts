@@ -18,51 +18,58 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const month = searchParams.get("month"); // '1' - '12' or null
     const year = searchParams.get("year");   // e.g. '2026' or null
+    const category = searchParams.get("category"); // optional category filter
+    const tipeFilter = searchParams.get("tipe"); // 'income' | 'expense' or null
+    const searchQuery = searchParams.get("search"); // optional search in deskripsi / kategori
 
     let transactions;
     let summary;
 
-    if (month && year && month !== "all" && year !== "all") {
-      const monthNum = parseInt(month, 10);
-      const yearNum = parseInt(year, 10);
+    // Filter dinamis dengan parameterized SQL
+    const monthNum = month && month !== "all" ? parseInt(month, 10) : null;
+    const yearNum = year && year !== "all" ? parseInt(year, 10) : null;
+    const searchPattern = searchQuery ? `%${searchQuery.trim().toLowerCase()}%` : null;
 
-      // Jalankan query transaksi dan kalkulasi summary secara paralel untuk performa maksimal
-      [transactions, summary] = await Promise.all([
-        sql`
-          SELECT id, tipe, jumlah, deskripsi, TO_CHAR(tanggal, 'YYYY-MM-DD') AS tanggal, created_at
-          FROM transactions
-          WHERE user_id = ${session.userId}
-            AND EXTRACT(MONTH FROM tanggal) = ${monthNum}
-            AND EXTRACT(YEAR FROM tanggal) = ${yearNum}
-          ORDER BY tanggal DESC, id DESC
-        `,
-        sql`
-          SELECT 
-            COALESCE(SUM(CASE WHEN tipe = 'income' THEN jumlah ELSE 0 END), 0) AS total_income,
-            COALESCE(SUM(CASE WHEN tipe = 'expense' THEN jumlah ELSE 0 END), 0) AS total_expense
-          FROM transactions
-          WHERE user_id = ${session.userId}
-            AND EXTRACT(MONTH FROM tanggal) = ${monthNum}
-            AND EXTRACT(YEAR FROM tanggal) = ${yearNum}
-        `
-      ]);
-    } else {
-      [transactions, summary] = await Promise.all([
-        sql`
-          SELECT id, tipe, jumlah, deskripsi, TO_CHAR(tanggal, 'YYYY-MM-DD') AS tanggal, created_at
-          FROM transactions
-          WHERE user_id = ${session.userId}
-          ORDER BY tanggal DESC, id DESC
-        `,
-        sql`
-          SELECT 
-            COALESCE(SUM(CASE WHEN tipe = 'income' THEN jumlah ELSE 0 END), 0) AS total_income,
-            COALESCE(SUM(CASE WHEN tipe = 'expense' THEN jumlah ELSE 0 END), 0) AS total_expense
-          FROM transactions
-          WHERE user_id = ${session.userId}
-        `
-      ]);
-    }
+    [transactions, summary] = await Promise.all([
+      sql`
+        SELECT 
+          id, 
+          tipe, 
+          jumlah, 
+          COALESCE(kategori, 'Umum') AS kategori, 
+          deskripsi, 
+          TO_CHAR(tanggal, 'YYYY-MM-DD') AS tanggal, 
+          created_at
+        FROM transactions
+        WHERE user_id = ${session.userId}
+          AND (${monthNum}::int IS NULL OR EXTRACT(MONTH FROM tanggal) = ${monthNum})
+          AND (${yearNum}::int IS NULL OR EXTRACT(YEAR FROM tanggal) = ${yearNum})
+          AND (${category || null}::text IS NULL OR kategori = ${category})
+          AND (${tipeFilter || null}::text IS NULL OR tipe = ${tipeFilter})
+          AND (
+            ${searchPattern}::text IS NULL OR 
+            LOWER(deskripsi) LIKE ${searchPattern} OR 
+            LOWER(kategori) LIKE ${searchPattern}
+          )
+        ORDER BY tanggal DESC, id DESC
+      `,
+      sql`
+        SELECT 
+          COALESCE(SUM(CASE WHEN tipe = 'income' THEN jumlah ELSE 0 END), 0) AS total_income,
+          COALESCE(SUM(CASE WHEN tipe = 'expense' THEN jumlah ELSE 0 END), 0) AS total_expense
+        FROM transactions
+        WHERE user_id = ${session.userId}
+          AND (${monthNum}::int IS NULL OR EXTRACT(MONTH FROM tanggal) = ${monthNum})
+          AND (${yearNum}::int IS NULL OR EXTRACT(YEAR FROM tanggal) = ${yearNum})
+          AND (${category || null}::text IS NULL OR kategori = ${category})
+          AND (${tipeFilter || null}::text IS NULL OR tipe = ${tipeFilter})
+          AND (
+            ${searchPattern}::text IS NULL OR 
+            LOWER(deskripsi) LIKE ${searchPattern} OR 
+            LOWER(kategori) LIKE ${searchPattern}
+          )
+      `
+    ]);
 
     const totalIncome = Number(summary[0]?.total_income || 0);
     const totalExpense = Number(summary[0]?.total_expense || 0);
@@ -82,6 +89,7 @@ export async function GET(request: Request) {
         id: Number(t.id),
         tipe: t.tipe,
         jumlah: Number(t.jumlah),
+        kategori: t.kategori || "Umum",
         deskripsi: t.deskripsi || "-",
         tanggal: t.tanggal,
         created_at: t.created_at,
@@ -109,6 +117,7 @@ export async function POST(request: Request) {
     const body = await request.json().catch(() => null);
     const tipe = body?.tipe;
     const jumlah = Number(body?.jumlah);
+    const kategori = body?.kategori ? String(body.kategori).trim().slice(0, 50) : "Umum";
     const deskripsi = body?.deskripsi ? String(body.deskripsi).trim() : "";
     const tanggal = body?.tanggal ? String(body.tanggal).trim() : "";
 
@@ -137,9 +146,9 @@ export async function POST(request: Request) {
     const sql = getDb();
 
     const result = await sql`
-      INSERT INTO transactions (user_id, tipe, jumlah, deskripsi, tanggal)
-      VALUES (${session.userId}, ${tipe}, ${jumlah}, ${deskripsi}, ${tanggal})
-      RETURNING id, tipe, jumlah, deskripsi, TO_CHAR(tanggal, 'YYYY-MM-DD') AS tanggal, created_at
+      INSERT INTO transactions (user_id, tipe, jumlah, kategori, deskripsi, tanggal)
+      VALUES (${session.userId}, ${tipe}, ${jumlah}, ${kategori}, ${deskripsi}, ${tanggal})
+      RETURNING id, tipe, jumlah, kategori, deskripsi, TO_CHAR(tanggal, 'YYYY-MM-DD') AS tanggal, created_at
     `;
 
     // Heartbeat update

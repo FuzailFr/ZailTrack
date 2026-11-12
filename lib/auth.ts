@@ -1,7 +1,9 @@
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
 
-const COOKIE_NAME = "zailtrack_session";
+export const COOKIE_NAME = "zailtrack_session";
+export const JWT_ISSUER = "zailtrack";
+export const JWT_AUDIENCE = "zailtrack-app";
 
 function getSecretKey(): Uint8Array {
   const secret = process.env.JWT_SECRET;
@@ -36,6 +38,8 @@ export async function signToken(payload: UserPayload): Promise<string> {
   return new SignJWT({ ...payload })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
+    .setIssuer(JWT_ISSUER)
+    .setAudience(JWT_AUDIENCE)
     .setExpirationTime("7d")
     .sign(secretKey);
 }
@@ -46,6 +50,7 @@ export async function signFeedToken(userId: number, username: string): Promise<s
   return new SignJWT({ userId, username, scope: "sheets_feed" })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
+    .setIssuer(JWT_ISSUER)
     .setExpirationTime("365d")
     .sign(secretKey);
 }
@@ -69,7 +74,9 @@ export async function verifyFeedToken(token: string): Promise<{ userId: number; 
 export async function verifyToken(token: string): Promise<UserPayload | null> {
   try {
     const secretKey = getSecretKey();
-    const { payload } = await jwtVerify(token, secretKey);
+    const { payload } = await jwtVerify(token, secretKey, {
+      clockTolerance: 15,
+    });
     return {
       userId: Number(payload.userId),
       username: String(payload.username),

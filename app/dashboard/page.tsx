@@ -35,6 +35,11 @@ import {
   Pencil,
   KeyRound,
   BarChart3,
+  Target,
+  PiggyBank,
+  Repeat,
+  CreditCard,
+  CheckCircle2,
 } from "lucide-react";
 import ThemeToggle from "@/components/ThemeToggle";
 
@@ -42,10 +47,14 @@ interface Transaction {
   id: number;
   tipe: "income" | "expense";
   jumlah: number;
+  kategori?: string;
   deskripsi: string;
   tanggal: string;
   created_at: string;
 }
+
+const DEFAULT_EXPENSE_CATEGORIES = ["Makanan", "Transport", "Belanja", "Tagihan", "Hiburan", "Kesehatan", "Lainnya"];
+const DEFAULT_INCOME_CATEGORIES = ["Gaji", "Bisnis", "Investasi", "Bonus", "Lainnya"];
 
 interface SummaryData {
   total_income: number;
@@ -128,13 +137,16 @@ export default function DashboardPage() {
   const [selectedMonth, setSelectedMonth] = useState<string>(currentMonth);
   const [selectedYear, setSelectedYear] = useState<string>(currentYear);
 
-  // Search Query
+  // Search & Filter
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState("all");
 
   // Modal State: Tambah Transaksi
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [formTipe, setFormTipe] = useState<"income" | "expense">("expense");
   const [formJumlah, setFormJumlah] = useState("");
+  const [formKategori, setFormKategori] = useState("Makanan");
+  const [customCategory, setCustomCategory] = useState("");
   const [formDeskripsi, setFormDeskripsi] = useState("");
   const [formTanggal, setFormTanggal] = useState(
     new Date().toISOString().slice(0, 10)
@@ -147,6 +159,8 @@ export default function DashboardPage() {
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [editTipe, setEditTipe] = useState<"income" | "expense">("expense");
   const [editJumlah, setEditJumlah] = useState("");
+  const [editKategori, setEditKategori] = useState("Umum");
+  const [customEditCategory, setCustomEditCategory] = useState("");
   const [editDeskripsi, setEditDeskripsi] = useState("");
   const [editTanggal, setEditTanggal] = useState("");
   const [editSubmitting, setEditSubmitting] = useState(false);
@@ -189,6 +203,88 @@ export default function DashboardPage() {
       currency: "IDR",
       maximumFractionDigits: 0,
     }).format(amount);
+  };
+
+  // User Sub-Tab Navigation
+  const [userViewTab, setUserViewTab] = useState<"ledger" | "budgets" | "savings" | "recurring">("ledger");
+
+  // Budget Module State
+  const [budgetsList, setBudgetsList] = useState<any[]>([]);
+  const [loadingBudgets, setLoadingBudgets] = useState(false);
+  const [isBudgetModalOpen, setIsBudgetModalOpen] = useState(false);
+  const [budgetCategoryInput, setBudgetCategoryInput] = useState("Makanan");
+  const [budgetLimitInput, setBudgetLimitInput] = useState("");
+  const [budgetSubmitting, setBudgetSubmitting] = useState(false);
+
+  // Savings Goals Module State
+  const [savingsList, setSavingsList] = useState<any[]>([]);
+  const [loadingSavings, setLoadingSavings] = useState(false);
+  const [isSavingsModalOpen, setIsSavingsModalOpen] = useState(false);
+  const [savingsTitleInput, setSavingsTitleInput] = useState("");
+  const [savingsTargetInput, setSavingsTargetInput] = useState("");
+  const [savingsInitialInput, setSavingsInitialInput] = useState("");
+  const [savingsDateInput, setSavingsDateInput] = useState("");
+  const [savingsSubmitting, setSavingsSubmitting] = useState(false);
+  const [activeSavingsForDeposit, setActiveSavingsForDeposit] = useState<any>(null);
+  const [depositAmountInput, setDepositAmountInput] = useState("");
+  const [depositSubmitting, setDepositSubmitting] = useState(false);
+
+  // Recurring Transactions State
+  const [recurringList, setRecurringList] = useState<any[]>([]);
+  const [loadingRecurring, setLoadingRecurring] = useState(false);
+  const [isRecurringModalOpen, setIsRecurringModalOpen] = useState(false);
+  const [recurringTypeInput, setRecurringTypeInput] = useState<"income" | "expense">("expense");
+  const [recurringDescInput, setRecurringDescInput] = useState("");
+  const [recurringAmountInput, setRecurringAmountInput] = useState("");
+  const [recurringCategoryInput, setRecurringCategoryInput] = useState("Tagihan");
+  const [recurringDueDateInput, setRecurringDueDateInput] = useState("");
+  const [recurringSubmitting, setRecurringSubmitting] = useState(false);
+
+  const fetchBudgets = async () => {
+    setLoadingBudgets(true);
+    try {
+      const m = selectedMonth === "all" ? new Date().getMonth() + 1 : selectedMonth;
+      const y = selectedYear === "all" ? new Date().getFullYear() : selectedYear;
+      const res = await fetch(`/api/budgets?month=${m}&year=${y}`);
+      if (res.ok) {
+        const data = await res.json();
+        setBudgetsList(data.budgets || []);
+      }
+    } catch (err) {
+      console.error("Gagal ambil anggaran", err);
+    } finally {
+      setLoadingBudgets(false);
+    }
+  };
+
+  const fetchSavings = async () => {
+    setLoadingSavings(true);
+    try {
+      const res = await fetch("/api/savings");
+      if (res.ok) {
+        const data = await res.json();
+        setSavingsList(data.goals || []);
+      }
+    } catch (err) {
+      console.error("Gagal ambil tabungan", err);
+    } finally {
+      setLoadingSavings(false);
+    }
+  };
+
+  const fetchRecurring = async () => {
+    setLoadingRecurring(true);
+    try {
+      const res = await fetch("/api/recurring");
+      if (res.ok) {
+        const data = await res.json();
+        setRecurringList(data.recurring || []);
+      }
+    } catch (err) {
+      console.error("Gagal ambil tagihan rutin", err);
+    } finally {
+      setLoadingRecurring(false);
+    }
   };
 
   // 1. Check Auth
@@ -407,12 +503,17 @@ export default function DashboardPage() {
     setSubmitting(true);
 
     try {
+      const resolvedKategori = formKategori === "Lainnya"
+        ? (customCategory.trim() || "Lainnya")
+        : formKategori;
+
       const res = await fetch("/api/transactions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           tipe: formTipe,
           jumlah: parsedJumlah,
+          kategori: resolvedKategori,
           deskripsi: formDeskripsi.trim() || "-",
           tanggal: formTanggal,
         }),
@@ -425,6 +526,7 @@ export default function DashboardPage() {
 
       setFormJumlah("");
       setFormDeskripsi("");
+      setCustomCategory("");
       setFormTanggal(new Date().toISOString().slice(0, 10));
       setIsModalOpen(false);
 
@@ -465,6 +567,15 @@ export default function DashboardPage() {
     setEditingTransaction(t);
     setEditTipe(t.tipe);
     setEditJumlah(new Intl.NumberFormat("id-ID").format(t.jumlah));
+    const currentKat = t.kategori || "Umum";
+    const isKnown = DEFAULT_EXPENSE_CATEGORIES.includes(currentKat) || DEFAULT_INCOME_CATEGORIES.includes(currentKat);
+    if (isKnown) {
+      setEditKategori(currentKat);
+      setCustomEditCategory("");
+    } else {
+      setEditKategori("Lainnya");
+      setCustomEditCategory(currentKat);
+    }
     setEditDeskripsi(t.deskripsi === "-" ? "" : t.deskripsi);
     setEditTanggal(t.tanggal);
     setEditError(null);
@@ -489,12 +600,17 @@ export default function DashboardPage() {
     setEditError(null);
 
     try {
+      const resolvedEditKat = editKategori === "Lainnya"
+        ? (customEditCategory.trim() || "Lainnya")
+        : editKategori;
+
       const res = await fetch(`/api/transactions/${editingTransaction.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           tipe: editTipe,
           jumlah: parsedJumlah,
+          kategori: resolvedEditKat,
           deskripsi: editDeskripsi.trim() || "-",
           tanggal: editTanggal,
         }),
@@ -566,17 +682,29 @@ export default function DashboardPage() {
     }
   };
 
-  // Filtered Transactions by Search Query
+  // Filtered Transactions by Search Query & Category Filter
   const filteredTransactions = transactions.filter((t) => {
+    if (selectedCategoryFilter !== "all") {
+      const itemKat = t.kategori || "Umum";
+      if (itemKat.toLowerCase() !== selectedCategoryFilter.toLowerCase()) {
+        return false;
+      }
+    }
     if (!searchQuery.trim()) return true;
     const q = searchQuery.toLowerCase().trim();
     return (
       t.deskripsi.toLowerCase().includes(q) ||
+      (t.kategori && t.kategori.toLowerCase().includes(q)) ||
       t.jumlah.toString().includes(q) ||
       t.tanggal.includes(q) ||
       (t.tipe === "income" ? "pemasukan" : "pengeluaran").includes(q)
     );
   });
+
+  // Ambil daftar kategori unik dari transaksi yang ada
+  const availableCategories = Array.from(
+    new Set(transactions.map((t) => t.kategori || "Umum"))
+  ).filter(Boolean);
 
   // Cashflow Ratio & Analytics
   const totalVolume = summary.total_income + summary.total_expense;
@@ -1055,8 +1183,71 @@ export default function DashboardPage() {
               </section>
             )}
 
-            {/* Actions & Filters Bar */}
-            <section className="flex flex-col gap-3.5 p-3.5 sm:p-4 rounded-xl technical-card">
+            {/* SUB-NAVIGATION BAR UNTUK FITUR FINANSIAL LENGKAP */}
+            <div className="flex items-center gap-1.5 p-1 rounded-xl bg-[var(--surface)] border border-[var(--border)] overflow-x-auto">
+              <button
+                type="button"
+                onClick={() => setUserViewTab("ledger")}
+                className={`flex items-center gap-2 px-3.5 py-2 text-xs font-mono rounded-lg transition-colors cursor-pointer shrink-0 ${
+                  userViewTab === "ledger"
+                    ? "bg-[var(--text-primary)] text-[var(--bg)] font-bold shadow-xs"
+                    : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                }`}
+              >
+                <Layers size={14} />
+                <span>Buku Kas & Riwayat</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setUserViewTab("budgets");
+                  fetchBudgets();
+                }}
+                className={`flex items-center gap-2 px-3.5 py-2 text-xs font-mono rounded-lg transition-colors cursor-pointer shrink-0 ${
+                  userViewTab === "budgets"
+                    ? "bg-[var(--text-primary)] text-[var(--bg)] font-bold shadow-xs"
+                    : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                }`}
+              >
+                <Target size={14} />
+                <span>Anggaran (Budget)</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setUserViewTab("savings");
+                  fetchSavings();
+                }}
+                className={`flex items-center gap-2 px-3.5 py-2 text-xs font-mono rounded-lg transition-colors cursor-pointer shrink-0 ${
+                  userViewTab === "savings"
+                    ? "bg-[var(--text-primary)] text-[var(--bg)] font-bold shadow-xs"
+                    : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                }`}
+              >
+                <PiggyBank size={14} />
+                <span>Target Tabungan</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setUserViewTab("recurring");
+                  fetchRecurring();
+                }}
+                className={`flex items-center gap-2 px-3.5 py-2 text-xs font-mono rounded-lg transition-colors cursor-pointer shrink-0 ${
+                  userViewTab === "recurring"
+                    ? "bg-[var(--text-primary)] text-[var(--bg)] font-bold shadow-xs"
+                    : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                }`}
+              >
+                <Repeat size={14} />
+                <span>Tagihan Rutin</span>
+              </button>
+            </div>
+
+            {/* TAB 1: BUKU KAS / TRANSAKSI LEDGER */}
+            {userViewTab === "ledger" && (
+              <>
+                <section className="flex flex-col gap-3.5 p-3.5 sm:p-4 rounded-xl technical-card">
               <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
                 {/* Filters */}
                 <div className="flex flex-col sm:flex-row sm:items-center gap-2">
@@ -1088,6 +1279,19 @@ export default function DashboardPage() {
                       <option value="2026">2026</option>
                       <option value="2025">2025</option>
                       <option value="2024">2024</option>
+                    </select>
+
+                    <select
+                      value={selectedCategoryFilter}
+                      onChange={(e) => setSelectedCategoryFilter(e.target.value)}
+                      className="technical-input px-2.5 py-1.5 rounded-md text-xs font-mono cursor-pointer w-full sm:w-auto"
+                    >
+                      <option value="all">Semua Kategori</option>
+                      {availableCategories.map((kat) => (
+                        <option key={kat} value={kat}>
+                          {kat}
+                        </option>
+                      ))}
                     </select>
                   </div>
                 </div>
@@ -1213,6 +1417,10 @@ export default function DashboardPage() {
                             >
                               {t.tipe === "income" ? "PEMASUKAN" : "PENGELUARAN"}
                             </span>
+                            <span>•</span>
+                            <span className="px-1.5 py-0.5 rounded bg-[var(--surface-hover)] border border-[var(--border)] text-[var(--text-secondary)] font-medium">
+                              {t.kategori || "Umum"}
+                            </span>
                           </div>
                         </div>
                         <div className="text-right shrink-0">
@@ -1306,15 +1514,20 @@ export default function DashboardPage() {
                             {t.deskripsi}
                           </td>
                           <td className="py-3.5 px-4 whitespace-nowrap">
-                            {t.tipe === "income" ? (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                                PEMASUKAN
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span
+                                className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold border ${
+                                  t.tipe === "income"
+                                    ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
+                                    : "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20"
+                                }`}
+                              >
+                                {t.tipe === "income" ? "MASUK" : "KELUAR"}
                               </span>
-                            ) : (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20">
-                                PENGELUARAN
+                              <span className="px-1.5 py-0.5 rounded text-[10px] bg-[var(--surface-hover)] border border-[var(--border)] text-[var(--text-secondary)]">
+                                {t.kategori || "Umum"}
                               </span>
-                            )}
+                            </div>
                           </td>
                           <td
                             className={`py-3.5 px-4 text-right whitespace-nowrap font-bold text-sm ${
@@ -1351,6 +1564,440 @@ export default function DashboardPage() {
                 </table>
               </div>
             </section>
+            </>
+            )}
+
+            {/* TAB 2: ANGGARAN BULANAN (BUDGETS) */}
+            {userViewTab === "budgets" && (
+              <div className="space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl technical-card">
+                  <div>
+                    <h3 className="text-base font-bold flex items-center gap-2">
+                      <Target size={18} className="text-emerald-500" />
+                      <span>Batas Anggaran Bulanan</span>
+                    </h3>
+                    <p className="text-xs font-mono text-[var(--text-muted)]">
+                      Kendalikan batas pengeluaran kategori untuk periode {selectedMonth === "all" ? "bulan ini" : `bulan ${selectedMonth}`}/{selectedYear === "all" ? "2026" : selectedYear}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setBudgetCategoryInput("Makanan");
+                      setBudgetLimitInput("");
+                      setIsBudgetModalOpen(true);
+                    }}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-mono font-semibold rounded-md bg-[var(--text-primary)] text-[var(--bg)] hover:opacity-90 transition-opacity cursor-pointer shrink-0"
+                  >
+                    <Plus size={14} />
+                    <span>+ Atur Anggaran Kategori</span>
+                  </button>
+                </div>
+
+                {loadingBudgets ? (
+                  <div className="p-12 text-center text-xs font-mono text-[var(--text-muted)] flex flex-col items-center gap-2">
+                    <div className="w-5 h-5 border-2 border-[var(--accent)] border-t-transparent rounded-full animate-spin" />
+                    <span>Memuat data anggaran...</span>
+                  </div>
+                ) : budgetsList.length === 0 ? (
+                  <div className="technical-card p-12 text-center space-y-3 rounded-xl">
+                    <Target size={36} className="mx-auto text-[var(--text-muted)] opacity-40" />
+                    <p className="text-sm font-semibold text-[var(--text-primary)]">Belum Ada Anggaran Disetel</p>
+                    <p className="text-xs text-[var(--text-muted)] max-w-sm mx-auto">
+                      Atur batas pengeluaran untuk kategori seperti Makanan, Transport, atau Tagihan agar sistem dapat memberi peringatan saat Anda mendekati batas.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setIsBudgetModalOpen(true)}
+                      className="px-4 py-2 text-xs font-mono font-semibold rounded-md bg-[var(--accent)] text-white hover:opacity-90 transition-opacity cursor-pointer"
+                    >
+                      + Pasang Batas Anggaran Pertama
+                    </button>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {budgetsList.map((b) => (
+                      <div
+                        key={b.id}
+                        className={`technical-card p-4 rounded-xl space-y-3 border transition-colors ${
+                          b.isOverBudget
+                            ? "border-rose-500/50 bg-rose-500/[0.03]"
+                            : b.percentage >= 80
+                            ? "border-amber-500/40 bg-amber-500/[0.02]"
+                            : "border-[var(--border)]"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="px-2 py-0.5 rounded text-[11px] font-mono font-semibold bg-[var(--surface-hover)] border border-[var(--border)] text-[var(--text-primary)]">
+                              {b.kategori}
+                            </span>
+                            {b.isOverBudget && (
+                              <span className="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold bg-rose-500/20 text-rose-500 border border-rose-500/30 animate-pulse">
+                                OVER BUDGET
+                              </span>
+                            )}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              if (!window.confirm(`Hapus anggaran ${b.kategori}?`)) return;
+                              await fetch(`/api/budgets?id=${b.id}`, { method: "DELETE" });
+                              fetchBudgets();
+                            }}
+                            className="p-1 rounded text-[var(--text-muted)] hover:text-rose-500 hover:bg-rose-500/10 transition-colors cursor-pointer"
+                            title="Hapus anggaran"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
+
+                        <div className="flex items-baseline justify-between font-mono">
+                          <div>
+                            <span className="text-[10px] text-[var(--text-muted)] block">TERPAKAI</span>
+                            <span className={`text-lg font-bold ${b.isOverBudget ? "text-rose-500" : "text-[var(--text-primary)]"}`}>
+                              {formatIDR(b.spent)}
+                            </span>
+                          </div>
+                          <div className="text-right">
+                            <span className="text-[10px] text-[var(--text-muted)] block">BATAS MAKS</span>
+                            <span className="text-sm font-semibold text-[var(--text-muted)]">{formatIDR(b.limit)}</span>
+                          </div>
+                        </div>
+
+                        {/* Progress Bar */}
+                        <div className="space-y-1">
+                          <div className="w-full h-2 rounded-full bg-[var(--bg-secondary)] overflow-hidden border border-[var(--border)]">
+                            <div
+                              style={{ width: `${Math.min(100, b.percentage)}%` }}
+                              className={`h-full transition-all duration-500 ${
+                                b.isOverBudget
+                                  ? "bg-rose-500"
+                                  : b.percentage >= 80
+                                  ? "bg-amber-500"
+                                  : "bg-emerald-500"
+                              }`}
+                            />
+                          </div>
+                          <div className="flex items-center justify-between text-[10px] font-mono text-[var(--text-muted)]">
+                            <span>{b.percentage}% terpakai</span>
+                            <span>
+                              {b.isOverBudget
+                                ? `Lebih ${formatIDR(Math.abs(b.remaining))}`
+                                : `Sisa ${formatIDR(b.remaining)}`}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* TAB 3: TARGET TABUNGAN (SAVINGS) */}
+            {userViewTab === "savings" && (
+              <div className="space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl technical-card">
+                  <div>
+                    <h3 className="text-base font-bold flex items-center gap-2">
+                      <PiggyBank size={18} className="text-emerald-500" />
+                      <span>Target Tabungan & Dana Impian</span>
+                    </h3>
+                    <p className="text-xs font-mono text-[var(--text-muted)]">
+                      Alokasikan tabungan terencana untuk dana darurat, investasi, atau impian Anda
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSavingsTitleInput("");
+                      setSavingsTargetInput("");
+                      setSavingsInitialInput("");
+                      setSavingsDateInput("");
+                      setIsSavingsModalOpen(true);
+                    }}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-mono font-semibold rounded-md bg-[var(--text-primary)] text-[var(--bg)] hover:opacity-90 transition-opacity cursor-pointer shrink-0"
+                  >
+                    <Plus size={14} />
+                    <span>+ Buat Target Tabungan</span>
+                  </button>
+                </div>
+
+                {loadingSavings ? (
+                  <div className="p-12 text-center text-xs font-mono text-[var(--text-muted)] flex flex-col items-center gap-2">
+                    <div className="w-5 h-5 border-2 border-[var(--accent)] border-t-transparent rounded-full animate-spin" />
+                    <span>Memuat target tabungan...</span>
+                  </div>
+                ) : savingsList.length === 0 ? (
+                  <div className="technical-card p-12 text-center space-y-3 rounded-xl">
+                    <PiggyBank size={36} className="mx-auto text-[var(--text-muted)] opacity-40" />
+                    <p className="text-sm font-semibold text-[var(--text-primary)]">Belum Ada Target Tabungan</p>
+                    <p className="text-xs text-[var(--text-muted)] max-w-sm mx-auto">
+                      Buat target tabungan seperti Dana Darurat 10jt, Liburan, atau Beli Laptop untuk memantau progres tabungan Anda.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setIsSavingsModalOpen(true)}
+                      className="px-4 py-2 text-xs font-mono font-semibold rounded-md bg-[var(--accent)] text-white hover:opacity-90 transition-opacity cursor-pointer"
+                    >
+                      + Buat Target Tabungan Pertama
+                    </button>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {savingsList.map((g) => (
+                      <div
+                        key={g.id}
+                        className={`technical-card p-4 rounded-xl space-y-3 border transition-colors ${
+                          g.isCompleted ? "border-emerald-500/40 bg-emerald-500/[0.02]" : "border-[var(--border)]"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-sm text-[var(--text-primary)]">{g.judul}</span>
+                            {g.isCompleted ? (
+                              <span className="px-2 py-0.5 rounded text-[9px] font-mono font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center gap-1">
+                                <Check size={10} /> TERCAPAI
+                              </span>
+                            ) : (
+                              <span className="px-1.5 py-0.5 rounded text-[9px] font-mono text-sky-400 bg-sky-500/10 border border-sky-500/20">
+                                BERJALAN
+                              </span>
+                            )}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              if (!window.confirm(`Hapus target tabungan "${g.judul}"?`)) return;
+                              await fetch(`/api/savings/${g.id}`, { method: "DELETE" });
+                              fetchSavings();
+                            }}
+                            className="p-1 rounded text-[var(--text-muted)] hover:text-rose-500 hover:bg-rose-500/10 transition-colors cursor-pointer"
+                            title="Hapus target"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
+
+                        <div className="flex items-baseline justify-between font-mono">
+                          <div>
+                            <span className="text-[10px] text-[var(--text-muted)] block">TERKUMPUL</span>
+                            <span className="text-lg font-bold text-emerald-500">{formatIDR(g.saved)}</span>
+                          </div>
+                          <div className="text-right">
+                            <span className="text-[10px] text-[var(--text-muted)] block">TARGET</span>
+                            <span className="text-sm font-semibold text-[var(--text-muted)]">{formatIDR(g.target)}</span>
+                          </div>
+                        </div>
+
+                        {/* Progress Bar */}
+                        <div className="space-y-1">
+                          <div className="w-full h-2 rounded-full bg-[var(--bg-secondary)] overflow-hidden border border-[var(--border)]">
+                            <div
+                              style={{ width: `${Math.min(100, g.progress)}%` }}
+                              className="h-full bg-emerald-500 transition-all duration-500"
+                            />
+                          </div>
+                          <div className="flex items-center justify-between text-[10px] font-mono text-[var(--text-muted)]">
+                            <span>{g.progress}% tercapai</span>
+                            <span>{g.targetTanggal ? `Target: ${g.targetTanggal}` : "Tanpa batas waktu"}</span>
+                          </div>
+                        </div>
+
+                        {/* Quick Deposit / Withdraw Buttons */}
+                        <div className="pt-2 border-t border-[var(--border-subtle)] flex items-center justify-end gap-2">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setActiveSavingsForDeposit({ ...g, isWithdraw: true });
+                              setDepositAmountInput("");
+                            }}
+                            className="px-2.5 py-1 text-xs font-mono rounded border border-[var(--border)] text-[var(--text-secondary)] hover:text-rose-400 hover:border-rose-400/40 transition-colors cursor-pointer"
+                          >
+                            - Tarik
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setActiveSavingsForDeposit({ ...g, isWithdraw: false });
+                              setDepositAmountInput("");
+                            }}
+                            className="px-3 py-1 text-xs font-mono font-semibold rounded bg-emerald-600 text-white hover:bg-emerald-500 transition-colors cursor-pointer shadow-xs"
+                          >
+                            + Setor Dana
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* TAB 4: TAGIHAN RUTIN (RECURRING) */}
+            {userViewTab === "recurring" && (
+              <div className="space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl technical-card">
+                  <div>
+                    <h3 className="text-base font-bold flex items-center gap-2">
+                      <Repeat size={18} className="text-sky-500" />
+                      <span>Tagihan & Transaksi Rutin</span>
+                    </h3>
+                    <p className="text-xs font-mono text-[var(--text-muted)]">
+                      Daftar beban rutin bulanan (WiFi, Kost, Netflix) atau pendapatan rutin (Gaji)
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setRecurringDescInput("");
+                      setRecurringAmountInput("");
+                      setRecurringDueDateInput(new Date().toISOString().slice(0, 10));
+                      setIsRecurringModalOpen(true);
+                    }}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-mono font-semibold rounded-md bg-[var(--text-primary)] text-[var(--bg)] hover:opacity-90 transition-opacity cursor-pointer shrink-0"
+                  >
+                    <Plus size={14} />
+                    <span>+ Tambah Tagihan Rutin</span>
+                  </button>
+                </div>
+
+                {loadingRecurring ? (
+                  <div className="p-12 text-center text-xs font-mono text-[var(--text-muted)] flex flex-col items-center gap-2">
+                    <div className="w-5 h-5 border-2 border-[var(--accent)] border-t-transparent rounded-full animate-spin" />
+                    <span>Memuat tagihan rutin...</span>
+                  </div>
+                ) : recurringList.length === 0 ? (
+                  <div className="technical-card p-12 text-center space-y-3 rounded-xl">
+                    <Repeat size={36} className="mx-auto text-[var(--text-muted)] opacity-40" />
+                    <p className="text-sm font-semibold text-[var(--text-primary)]">Belum Ada Tagihan Rutin</p>
+                    <p className="text-xs text-[var(--text-muted)] max-w-sm mx-auto">
+                      Daftarkan pengeluaran berulang Anda seperti WiFi, Sewa Kost, atau Langganan untuk melacak jatuh tempo secara otomatis.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setIsRecurringModalOpen(true)}
+                      className="px-4 py-2 text-xs font-mono font-semibold rounded-md bg-[var(--accent)] text-white hover:opacity-90 transition-opacity cursor-pointer"
+                    >
+                      + Daftarkan Tagihan Rutin Pertama
+                    </button>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {recurringList.map((r) => (
+                      <div
+                        key={r.id}
+                        className={`technical-card p-4 rounded-xl space-y-3 border transition-colors ${
+                          r.isOverdue
+                            ? "border-rose-500/50 bg-rose-500/[0.02]"
+                            : r.isDueSoon
+                            ? "border-amber-500/40 bg-amber-500/[0.02]"
+                            : "border-[var(--border)]"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-sm text-[var(--text-primary)]">{r.deskripsi}</span>
+                            <span className="px-1.5 py-0.5 rounded text-[10px] font-mono text-[var(--text-muted)] bg-[var(--surface-hover)] border border-[var(--border)]">
+                              {r.kategori}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                await fetch(`/api/recurring/${r.id}`, {
+                                  method: "PATCH",
+                                  headers: { "Content-Type": "application/json" },
+                                  body: JSON.stringify({ isActive: !r.isActive }),
+                                });
+                                fetchRecurring();
+                              }}
+                              className={`text-[10px] font-mono px-2 py-0.5 rounded cursor-pointer ${
+                                r.isActive ? "bg-emerald-500/10 text-emerald-400" : "bg-zinc-700 text-zinc-400"
+                              }`}
+                              title="Klik untuk ubah status aktif"
+                            >
+                              {r.isActive ? "Aktif" : "Nonaktif"}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                if (!window.confirm(`Hapus transaksi rutin "${r.deskripsi}"?`)) return;
+                                await fetch(`/api/recurring/${r.id}`, { method: "DELETE" });
+                                fetchRecurring();
+                              }}
+                              className="p-1 rounded text-[var(--text-muted)] hover:text-rose-500 cursor-pointer"
+                              title="Hapus"
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="flex items-baseline justify-between font-mono">
+                          <div>
+                            <span className="text-[10px] text-[var(--text-muted)] block">NOMINAL</span>
+                            <span
+                              className={`text-lg font-bold ${
+                                r.tipe === "income" ? "text-emerald-500" : "text-rose-500"
+                              }`}
+                            >
+                              {r.tipe === "income" ? `+ ${formatIDR(r.jumlah)}` : `- ${formatIDR(r.jumlah)}`}
+                            </span>
+                          </div>
+                          <div className="text-right">
+                            <span className="text-[10px] text-[var(--text-muted)] block">JATUH TEMPO</span>
+                            <span className="text-xs font-semibold text-[var(--text-secondary)]">
+                              {r.tanggalBerikutnya}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Due Badge and Action */}
+                        <div className="pt-2 border-t border-[var(--border-subtle)] flex items-center justify-between">
+                          <span
+                            className={`text-[11px] font-mono font-semibold ${
+                              r.isOverdue
+                                ? "text-rose-500"
+                                : r.isDueSoon
+                                ? "text-amber-500"
+                                : "text-[var(--text-muted)]"
+                            }`}
+                          >
+                            {r.isOverdue
+                              ? `🚨 Terlewat ${Math.abs(r.daysUntilDue)} hari`
+                              : r.daysUntilDue === 0
+                              ? "⚠️ Jatuh tempo hari ini!"
+                              : `⏳ ${r.daysUntilDue} hari lagi`}
+                          </span>
+
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              const res = await fetch(`/api/recurring/${r.id}`, {
+                                method: "PATCH",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ action: "pay_now" }),
+                              });
+                              if (res.ok) {
+                                alert(`Transaksi "${r.deskripsi}" telah dicatat ke Buku Kas & periode berikutnya telah dimajukan.`);
+                                fetchRecurring();
+                                fetchTransactions();
+                              }
+                            }}
+                            className="px-2.5 py-1 text-xs font-mono font-semibold rounded bg-[var(--text-primary)] text-[var(--bg)] hover:opacity-90 transition-opacity cursor-pointer shadow-xs"
+                          >
+                            Bayar & Catat
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
       </main>
@@ -1636,7 +2283,10 @@ export default function DashboardPage() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => setFormTipe("income")}
+                    onClick={() => {
+                      setFormTipe("income");
+                      setFormKategori("Gaji");
+                    }}
                     className={`py-2 text-xs font-semibold rounded-md transition-colors cursor-pointer ${
                       formTipe === "income"
                         ? "bg-emerald-600 text-white shadow-xs"
@@ -1646,6 +2296,38 @@ export default function DashboardPage() {
                     Pemasukan (+)
                   </button>
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-mono text-[var(--text-secondary)] mb-1.5 uppercase tracking-wider">
+                  Kategori
+                </label>
+                <div className="flex flex-wrap gap-1.5 mb-1.5">
+                  {(formTipe === "expense" ? DEFAULT_EXPENSE_CATEGORIES : DEFAULT_INCOME_CATEGORIES).map((kat) => (
+                    <button
+                      key={kat}
+                      type="button"
+                      onClick={() => setFormKategori(kat)}
+                      className={`px-2.5 py-1 text-xs rounded-md border font-mono transition-colors cursor-pointer ${
+                        formKategori === kat
+                          ? "bg-[var(--accent)] text-white border-[var(--accent)] font-semibold"
+                          : "border-[var(--border)] text-[var(--text-secondary)] hover:border-[var(--text-primary)]"
+                      }`}
+                    >
+                      {kat}
+                    </button>
+                  ))}
+                </div>
+                {formKategori === "Lainnya" && (
+                  <input
+                    type="text"
+                    placeholder="Tulis kategori kustom..."
+                    value={customCategory}
+                    onChange={(e) => setCustomCategory(e.target.value)}
+                    maxLength={30}
+                    className="technical-input w-full px-3 py-1.5 text-xs rounded-md font-mono mt-1"
+                  />
+                )}
               </div>
 
               <div>
@@ -1758,7 +2440,10 @@ export default function DashboardPage() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => setEditTipe("income")}
+                    onClick={() => {
+                      setEditTipe("income");
+                      if (DEFAULT_EXPENSE_CATEGORIES.includes(editKategori)) setEditKategori("Gaji");
+                    }}
                     className={`py-2 text-xs font-mono font-medium rounded-md transition-all cursor-pointer ${
                       editTipe === "income"
                         ? "bg-emerald-500 text-white font-bold shadow-xs"
@@ -1768,6 +2453,38 @@ export default function DashboardPage() {
                     PEMASUKAN (+)
                   </button>
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-mono text-[var(--text-secondary)] mb-1.5 uppercase tracking-wider">
+                  Kategori
+                </label>
+                <div className="flex flex-wrap gap-1.5 mb-1.5">
+                  {(editTipe === "expense" ? DEFAULT_EXPENSE_CATEGORIES : DEFAULT_INCOME_CATEGORIES).map((kat) => (
+                    <button
+                      key={kat}
+                      type="button"
+                      onClick={() => setEditKategori(kat)}
+                      className={`px-2.5 py-1 text-xs rounded-md border font-mono transition-colors cursor-pointer ${
+                        editKategori === kat
+                          ? "bg-[var(--accent)] text-white border-[var(--accent)] font-semibold"
+                          : "border-[var(--border)] text-[var(--text-secondary)] hover:border-[var(--text-primary)]"
+                      }`}
+                    >
+                      {kat}
+                    </button>
+                  ))}
+                </div>
+                {editKategori === "Lainnya" && (
+                  <input
+                    type="text"
+                    placeholder="Tulis kategori kustom..."
+                    value={customEditCategory}
+                    onChange={(e) => setCustomEditCategory(e.target.value)}
+                    maxLength={30}
+                    className="technical-input w-full px-3 py-1.5 text-xs rounded-md font-mono mt-1"
+                  />
+                )}
               </div>
 
               <div>
@@ -1948,7 +2665,478 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Footer */}
+      {/* MODAL: ATUR ANGGARAN (BUDGETS) */}
+      {isBudgetModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in">
+          <div className="technical-card w-full max-w-md rounded-2xl p-6 shadow-2xl relative">
+            <div className="flex items-center justify-between pb-4 border-b border-[var(--border)]">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
+                  <Target size={18} />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold">Atur Anggaran Kategori</h3>
+                  <p className="text-[11px] font-mono text-[var(--text-muted)]">
+                    Tetapkan batas pengeluaran bulanan
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsBudgetModalOpen(false)}
+                className="p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] rounded cursor-pointer"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                const limitVal = parseFloat(budgetLimitInput.replace(/[^0-9]/g, ""));
+                if (isNaN(limitVal) || limitVal <= 0) return alert("Batas anggaran harus berupa angka positif.");
+                setBudgetSubmitting(true);
+                try {
+                  const m = selectedMonth === "all" ? new Date().getMonth() + 1 : selectedMonth;
+                  const y = selectedYear === "all" ? new Date().getFullYear() : selectedYear;
+                  const res = await fetch("/api/budgets", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ kategori: budgetCategoryInput, limit: limitVal, month: m, year: y }),
+                  });
+                  if (res.ok) {
+                    setIsBudgetModalOpen(false);
+                    fetchBudgets();
+                  } else {
+                    const data = await res.json();
+                    alert(data.message || "Gagal menyimpan anggaran.");
+                  }
+                } finally {
+                  setBudgetSubmitting(false);
+                }
+              }}
+              className="mt-4 space-y-4"
+            >
+              <div>
+                <label className="block text-xs font-mono text-[var(--text-secondary)] mb-1.5 uppercase">
+                  Pilih Kategori
+                </label>
+                <div className="flex flex-wrap gap-1.5 mb-2">
+                  {["Makanan", "Transport", "Belanja", "Tagihan", "Hiburan", "Kesehatan", "Total Bulanan"].map((kat) => (
+                    <button
+                      key={kat}
+                      type="button"
+                      onClick={() => setBudgetCategoryInput(kat)}
+                      className={`px-2.5 py-1 text-xs rounded-md border font-mono transition-colors cursor-pointer ${
+                        budgetCategoryInput === kat
+                          ? "bg-[var(--accent)] text-white border-[var(--accent)] font-semibold"
+                          : "border-[var(--border)] text-[var(--text-secondary)] hover:border-[var(--text-primary)]"
+                      }`}
+                    >
+                      {kat}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-mono text-[var(--text-secondary)] mb-1.5 uppercase">
+                  Batas Maksimal Pengeluaran (IDR)
+                </label>
+                <input
+                  type="number"
+                  placeholder="Contoh: 1500000"
+                  value={budgetLimitInput}
+                  onChange={(e) => setBudgetLimitInput(e.target.value)}
+                  required
+                  className="technical-input w-full px-3 py-2 text-sm rounded-md font-mono"
+                />
+              </div>
+
+              <div className="pt-2 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsBudgetModalOpen(false)}
+                  className="px-4 py-2 rounded-md border border-[var(--border)] text-xs font-mono text-[var(--text-muted)] cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={budgetSubmitting}
+                  className="px-5 py-2 rounded-md bg-[var(--text-primary)] text-[var(--bg)] text-xs font-semibold hover:opacity-90 transition-opacity cursor-pointer disabled:opacity-50"
+                >
+                  {budgetSubmitting ? "Menyimpan..." : "Simpan Anggaran"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: BUAT TARGET TABUNGAN (SAVINGS) */}
+      {isSavingsModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in">
+          <div className="technical-card w-full max-w-md rounded-2xl p-6 shadow-2xl relative">
+            <div className="flex items-center justify-between pb-4 border-b border-[var(--border)]">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
+                  <PiggyBank size={18} />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold">Target Tabungan Baru</h3>
+                  <p className="text-[11px] font-mono text-[var(--text-muted)]">
+                    Wujudkan tujuan finansial Anda
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsSavingsModalOpen(false)}
+                className="p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] rounded cursor-pointer"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                const targetVal = parseFloat(savingsTargetInput.replace(/[^0-9]/g, ""));
+                if (isNaN(targetVal) || targetVal <= 0) return alert("Target nominal harus berupa angka positif.");
+                const initialVal = parseFloat(savingsInitialInput.replace(/[^0-9]/g, "")) || 0;
+                setSavingsSubmitting(true);
+                try {
+                  const res = await fetch("/api/savings", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      judul: savingsTitleInput,
+                      targetNominal: targetVal,
+                      initialSaved: initialVal,
+                      targetTanggal: savingsDateInput || null,
+                    }),
+                  });
+                  if (res.ok) {
+                    setIsSavingsModalOpen(false);
+                    fetchSavings();
+                  } else {
+                    const data = await res.json();
+                    alert(data.message || "Gagal membuat target.");
+                  }
+                } finally {
+                  setSavingsSubmitting(false);
+                }
+              }}
+              className="mt-4 space-y-4"
+            >
+              <div>
+                <label className="block text-xs font-mono text-[var(--text-secondary)] mb-1.5 uppercase">
+                  Judul Impian / Tabungan
+                </label>
+                <input
+                  type="text"
+                  placeholder="Contoh: Dana Darurat / Liburan Jepang"
+                  value={savingsTitleInput}
+                  onChange={(e) => setSavingsTitleInput(e.target.value)}
+                  required
+                  className="technical-input w-full px-3 py-2 text-sm rounded-md"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-mono text-[var(--text-secondary)] mb-1.5 uppercase">
+                  Target Nominal (IDR)
+                </label>
+                <input
+                  type="number"
+                  placeholder="Contoh: 10000000"
+                  value={savingsTargetInput}
+                  onChange={(e) => setSavingsTargetInput(e.target.value)}
+                  required
+                  className="technical-input w-full px-3 py-2 text-sm rounded-md font-mono"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-mono text-[var(--text-secondary)] mb-1.5 uppercase">
+                    Tabungan Awal (Opsional)
+                  </label>
+                  <input
+                    type="number"
+                    placeholder="0"
+                    value={savingsInitialInput}
+                    onChange={(e) => setSavingsInitialInput(e.target.value)}
+                    className="technical-input w-full px-3 py-2 text-sm rounded-md font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-mono text-[var(--text-secondary)] mb-1.5 uppercase">
+                    Batas Waktu (Opsional)
+                  </label>
+                  <input
+                    type="date"
+                    value={savingsDateInput}
+                    onChange={(e) => setSavingsDateInput(e.target.value)}
+                    className="technical-input w-full px-3 py-2 text-sm rounded-md font-mono"
+                  />
+                </div>
+              </div>
+
+              <div className="pt-2 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsSavingsModalOpen(false)}
+                  className="px-4 py-2 rounded-md border border-[var(--border)] text-xs font-mono text-[var(--text-muted)] cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingsSubmitting}
+                  className="px-5 py-2 rounded-md bg-[var(--text-primary)] text-[var(--bg)] text-xs font-semibold hover:opacity-90 transition-opacity cursor-pointer disabled:opacity-50"
+                >
+                  {savingsSubmitting ? "Menyimpan..." : "Buat Target"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: SETOR / TARIK DANA TABUNGAN */}
+      {activeSavingsForDeposit && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in">
+          <div className="technical-card w-full max-w-sm rounded-2xl p-6 shadow-2xl relative">
+            <div className="flex items-center justify-between pb-3 border-b border-[var(--border)]">
+              <div>
+                <h3 className="text-sm font-bold">
+                  {activeSavingsForDeposit.isWithdraw ? "Tarik Dana Tabungan" : "Setor Dana Tabungan"}
+                </h3>
+                <p className="text-[11px] font-mono text-[var(--text-muted)]">
+                  {activeSavingsForDeposit.judul} (Saldo: {formatIDR(activeSavingsForDeposit.saved)})
+                </p>
+              </div>
+              <button
+                onClick={() => setActiveSavingsForDeposit(null)}
+                className="p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] rounded cursor-pointer"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                const amt = parseFloat(depositAmountInput.replace(/[^0-9]/g, ""));
+                if (isNaN(amt) || amt <= 0) return alert("Nominal harus berupa angka positif.");
+                setDepositSubmitting(true);
+                try {
+                  const payload = activeSavingsForDeposit.isWithdraw
+                    ? { withdrawAmount: amt }
+                    : { depositAmount: amt };
+                  const res = await fetch(`/api/savings/${activeSavingsForDeposit.id}`, {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload),
+                  });
+                  if (res.ok) {
+                    setActiveSavingsForDeposit(null);
+                    fetchSavings();
+                  } else {
+                    const data = await res.json();
+                    alert(data.message || "Gagal memproses transaksi tabungan.");
+                  }
+                } finally {
+                  setDepositSubmitting(false);
+                }
+              }}
+              className="mt-4 space-y-4"
+            >
+              <div>
+                <label className="block text-xs font-mono text-[var(--text-secondary)] mb-1.5 uppercase">
+                  Nominal {activeSavingsForDeposit.isWithdraw ? "Penarikan" : "Setoran"} (IDR)
+                </label>
+                <input
+                  type="number"
+                  placeholder="Contoh: 250000"
+                  value={depositAmountInput}
+                  onChange={(e) => setDepositAmountInput(e.target.value)}
+                  required
+                  className="technical-input w-full px-3 py-2 text-sm rounded-md font-mono"
+                />
+              </div>
+
+              <div className="pt-2 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setActiveSavingsForDeposit(null)}
+                  className="px-3 py-1.5 rounded-md border border-[var(--border)] text-xs font-mono text-[var(--text-muted)] cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={depositSubmitting}
+                  className="px-4 py-1.5 rounded-md bg-[var(--text-primary)] text-[var(--bg)] text-xs font-semibold hover:opacity-90 transition-opacity cursor-pointer disabled:opacity-50"
+                >
+                  {depositSubmitting ? "Menyimpan..." : "Konfirmasi"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: TAMBAH TAGIHAN RUTIN (RECURRING) */}
+      {isRecurringModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in">
+          <div className="technical-card w-full max-w-md rounded-2xl p-6 shadow-2xl relative">
+            <div className="flex items-center justify-between pb-4 border-b border-[var(--border)]">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-lg bg-sky-500/10 text-sky-500 border border-sky-500/20">
+                  <Repeat size={18} />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold">Tambah Tagihan Rutin</h3>
+                  <p className="text-[11px] font-mono text-[var(--text-muted)]">
+                    Jadwalkan pengeluaran/pemasukan berkala
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsRecurringModalOpen(false)}
+                className="p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] rounded cursor-pointer"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                const amt = parseFloat(recurringAmountInput.replace(/[^0-9]/g, ""));
+                if (isNaN(amt) || amt <= 0) return alert("Nominal harus berupa angka positif.");
+                if (!recurringDescInput.trim()) return alert("Deskripsi wajib diisi.");
+                if (!recurringDueDateInput) return alert("Tanggal jatuh tempo wajib diisi.");
+                setRecurringSubmitting(true);
+                try {
+                  const res = await fetch("/api/recurring", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      tipe: recurringTypeInput,
+                      jumlah: amt,
+                      kategori: recurringCategoryInput,
+                      deskripsi: recurringDescInput.trim(),
+                      frekuensi: "monthly",
+                      tanggalBerikutnya: recurringDueDateInput,
+                    }),
+                  });
+                  if (res.ok) {
+                    setIsRecurringModalOpen(false);
+                    fetchRecurring();
+                  } else {
+                    const data = await res.json();
+                    alert(data.message || "Gagal menyimpan tagihan rutin.");
+                  }
+                } finally {
+                  setRecurringSubmitting(false);
+                }
+              }}
+              className="mt-4 space-y-4"
+            >
+              <div>
+                <label className="block text-xs font-mono text-[var(--text-secondary)] mb-1.5 uppercase">
+                  Jenis Transaksi
+                </label>
+                <div className="grid grid-cols-2 gap-2 p-1 rounded-lg border border-[var(--border)] bg-[var(--bg-secondary)]">
+                  <button
+                    type="button"
+                    onClick={() => setRecurringTypeInput("expense")}
+                    className={`py-1.5 text-xs font-semibold rounded transition-colors cursor-pointer ${
+                      recurringTypeInput === "expense"
+                        ? "bg-rose-500 text-white font-bold"
+                        : "text-[var(--text-muted)]"
+                    }`}
+                  >
+                    Beban Tagihan (-)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setRecurringTypeInput("income")}
+                    className={`py-1.5 text-xs font-semibold rounded transition-colors cursor-pointer ${
+                      recurringTypeInput === "income"
+                        ? "bg-emerald-600 text-white font-bold"
+                        : "text-[var(--text-muted)]"
+                    }`}
+                  >
+                    Pemasukan Rutin (+)
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-mono text-[var(--text-secondary)] mb-1.5 uppercase">
+                  Deskripsi Tagihan
+                </label>
+                <input
+                  type="text"
+                  placeholder="Contoh: WiFi Indihome / Sewa Kost / Gaji Pokok"
+                  value={recurringDescInput}
+                  onChange={(e) => setRecurringDescInput(e.target.value)}
+                  required
+                  className="technical-input w-full px-3 py-2 text-sm rounded-md"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-mono text-[var(--text-secondary)] mb-1.5 uppercase">
+                    Nominal (IDR)
+                  </label>
+                  <input
+                    type="number"
+                    placeholder="Contoh: 350000"
+                    value={recurringAmountInput}
+                    onChange={(e) => setRecurringAmountInput(e.target.value)}
+                    required
+                    className="technical-input w-full px-3 py-2 text-sm rounded-md font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-mono text-[var(--text-secondary)] mb-1.5 uppercase">
+                    Jatuh Tempo Berikutnya
+                  </label>
+                  <input
+                    type="date"
+                    value={recurringDueDateInput}
+                    onChange={(e) => setRecurringDueDateInput(e.target.value)}
+                    required
+                    className="technical-input w-full px-3 py-2 text-sm rounded-md font-mono"
+                  />
+                </div>
+              </div>
+
+              <div className="pt-2 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsRecurringModalOpen(false)}
+                  className="px-4 py-2 rounded-md border border-[var(--border)] text-xs font-mono text-[var(--text-muted)] cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={recurringSubmitting}
+                  className="px-5 py-2 rounded-md bg-[var(--text-primary)] text-[var(--bg)] text-xs font-semibold hover:opacity-90 transition-opacity cursor-pointer disabled:opacity-50"
+                >
+                  {recurringSubmitting ? "Menyimpan..." : "Daftarkan Tagihan"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
       <footer className="max-w-6xl w-full mx-auto pt-6 border-t border-[var(--border)] flex flex-col sm:flex-row items-center justify-between text-xs text-[var(--text-muted)] gap-3 font-mono">
         <p>© {new Date().getFullYear()} ZailTrack Ledger. Engineered for speed & security.</p>
         <div className="flex items-center gap-4">

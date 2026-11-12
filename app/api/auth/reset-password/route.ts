@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { getDb, initDbSchema } from "@/lib/db";
-import { checkRateLimit, getClientIp, getClientRegion } from "@/lib/security";
+import { checkRateLimit, hashToken, getClientIp, getClientRegion } from "@/lib/security";
 import { logAudit } from "@/lib/logger";
 
 export async function POST(request: Request) {
@@ -43,11 +43,12 @@ export async function POST(request: Request) {
     await initDbSchema();
     const sql = getDb();
 
-    // Cari user dengan reset_token yang masih valid (belum kedaluwarsa)
+    // Cari user dengan hash token (atau fallback plain token legacy) yang masih valid
+    const hashedToken = hashToken(token);
     const matchingUsers = await sql`
       SELECT id, username, role, reset_token_expires_at 
       FROM users 
-      WHERE reset_token = ${token} 
+      WHERE (reset_token = ${hashedToken} OR reset_token = ${token}) 
         AND reset_token_expires_at > CURRENT_TIMESTAMP 
       LIMIT 1
     `;

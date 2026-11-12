@@ -21,6 +21,9 @@ const spaceMono = Space_Mono({
 
 export const viewport: Viewport = {
   themeColor: "#0b0d11",
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
 };
 
 export const metadata: Metadata = {

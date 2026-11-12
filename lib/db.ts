@@ -72,10 +72,14 @@ export async function initDbSchema() {
         user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
         tipe VARCHAR(10) NOT NULL CHECK (tipe IN ('income', 'expense')),
         jumlah NUMERIC(15, 2) NOT NULL,
+        kategori VARCHAR(50) NOT NULL DEFAULT 'Umum',
         deskripsi TEXT,
         tanggal DATE NOT NULL,
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       );
+    `;
+    await sql`
+      ALTER TABLE transactions ADD COLUMN IF NOT EXISTS kategori VARCHAR(50) DEFAULT 'Umum';
     `;
 
     // 4. Tabel audit_logs
@@ -147,6 +151,68 @@ export async function initDbSchema() {
     await sql`
       CREATE INDEX IF NOT EXISTS idx_transactions_user_date 
       ON transactions (user_id, tanggal DESC);
+    `;
+
+    await sql`
+      CREATE INDEX IF NOT EXISTS idx_transactions_user_kategori 
+      ON transactions (user_id, kategori);
+    `;
+
+    // 8. Tabel Budgets (Anggaran Bulanan & Kategori)
+    await sql`
+      CREATE TABLE IF NOT EXISTS budgets (
+        id SERIAL PRIMARY KEY,
+        user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        kategori VARCHAR(50) NOT NULL,
+        nominal_limit NUMERIC(15, 2) NOT NULL,
+        bulan INT NOT NULL,
+        tahun INT NOT NULL,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(user_id, kategori, bulan, tahun)
+      );
+    `;
+    await sql`
+      CREATE INDEX IF NOT EXISTS idx_budgets_user_period 
+      ON budgets (user_id, tahun, bulan);
+    `;
+
+    // 9. Tabel Savings Goals (Target Tabungan)
+    await sql`
+      CREATE TABLE IF NOT EXISTS savings_goals (
+        id SERIAL PRIMARY KEY,
+        user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        judul VARCHAR(100) NOT NULL,
+        target_nominal NUMERIC(15, 2) NOT NULL,
+        terkumpul_nominal NUMERIC(15, 2) NOT NULL DEFAULT 0,
+        target_tanggal DATE,
+        warna VARCHAR(20) DEFAULT '#10b981',
+        status VARCHAR(20) DEFAULT 'in_progress',
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+    `;
+    await sql`
+      CREATE INDEX IF NOT EXISTS idx_savings_user 
+      ON savings_goals (user_id, status);
+    `;
+
+    // 10. Tabel Recurring Transactions (Tagihan & Pemasukan Rutin)
+    await sql`
+      CREATE TABLE IF NOT EXISTS recurring_transactions (
+        id SERIAL PRIMARY KEY,
+        user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        tipe VARCHAR(10) NOT NULL CHECK (tipe IN ('income', 'expense')),
+        jumlah NUMERIC(15, 2) NOT NULL,
+        kategori VARCHAR(50) NOT NULL DEFAULT 'Umum',
+        deskripsi TEXT NOT NULL,
+        frekuensi VARCHAR(20) NOT NULL DEFAULT 'monthly',
+        tanggal_berikutnya DATE NOT NULL,
+        is_active BOOLEAN NOT NULL DEFAULT true,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+    `;
+    await sql`
+      CREATE INDEX IF NOT EXISTS idx_recurring_user 
+      ON recurring_transactions (user_id, is_active, tanggal_berikutnya);
     `;
 
     await sql`

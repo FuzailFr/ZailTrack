@@ -29,6 +29,7 @@ export async function PUT(
     const body = await request.json().catch(() => null);
     const tipe = body?.tipe;
     const jumlah = parseFloat(body?.jumlah);
+    const kategori = body?.kategori ? String(body.kategori).trim().slice(0, 50) : undefined;
     const deskripsi = (body?.deskripsi || "-").trim();
     const tanggal = body?.tanggal;
 
@@ -61,10 +62,11 @@ export async function PUT(
       SET 
         tipe = ${tipe},
         jumlah = ${jumlah},
+        kategori = COALESCE(${kategori || null}, kategori, 'Umum'),
         deskripsi = ${deskripsi},
         tanggal = ${tanggal}::date
       WHERE id = ${transactionId} AND user_id = ${session.userId}
-      RETURNING id, tipe, jumlah, deskripsi, TO_CHAR(tanggal, 'YYYY-MM-DD') AS tanggal, created_at
+      RETURNING id, tipe, jumlah, COALESCE(kategori, 'Umum') AS kategori, deskripsi, TO_CHAR(tanggal, 'YYYY-MM-DD') AS tanggal, created_at
     `;
 
     if (updated.length === 0) {

@@ -75,6 +75,15 @@ function formatLastActiveRelative(lastActiveAt?: string | null): string {
   return new Date(lastActiveAt).toLocaleDateString("id-ID");
 }
 
+// Format wilayah / region yang bersih dan informatif
+function formatDisplayRegion(region?: string | null, ip?: string | null): string {
+  if (!region || region === "Localhost" || region === "Localhost (ID)" || region === "Localhost (Dev)") {
+    if (ip === "127.0.0.1" || ip === "::1" || !ip) return "Localhost (Dev)";
+    return "Indonesia (ID)";
+  }
+  return region;
+}
+
 export default function AdminDashboardPage() {
   const router = useRouter();
 
@@ -607,30 +616,32 @@ export default function AdminDashboardPage() {
 
       {/* Main Top Header Navbar */}
       <header className="border-b border-[var(--border)] bg-[var(--surface)] sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
+        <div className="max-w-7xl mx-auto px-3.5 sm:px-6 h-14 sm:h-16 flex items-center justify-between gap-2 sm:gap-4">
           {/* Brand & Mode Tag */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
             <button
+              type="button"
               onClick={() => router.push("/dashboard")}
-              className="flex items-center gap-2 text-xs font-mono text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
+              className="flex items-center gap-1.5 text-xs font-mono text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer p-1 -ml-1 rounded"
               title="Kembali ke Dashboard Transaksi"
             >
               <ArrowLeft size={16} />
-              <span className="hidden sm:inline">Ledger</span>
+              <span className="hidden md:inline">Ledger</span>
             </button>
-            <div className="h-4 w-px bg-[var(--border)]" />
-            <div className="flex items-center gap-2 font-mono text-xs">
+            <div className="h-4 w-px bg-[var(--border)] hidden sm:block" />
+            <div className="flex items-center gap-1.5 sm:gap-2 font-mono text-xs">
               <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
-              <span className="font-bold tracking-tight text-sm">ZAILTRACK</span>
-              <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-500/10 text-amber-500 border border-amber-500/30">
-                {sessionUser?.role === "developer" ? "DEV COCKPIT" : "ADMIN PANEL"}
+              <span className="font-bold tracking-tight text-xs sm:text-sm">ZAILTRACK</span>
+              <span className="px-1.5 py-0.5 rounded text-[9px] sm:text-[10px] font-bold bg-amber-500/10 text-amber-500 border border-amber-500/30 whitespace-nowrap">
+                {sessionUser?.role === "developer" ? "DEV" : "ADMIN"}
               </span>
             </div>
           </div>
 
-          {/* Navigation Tabs Header */}
-          <nav className="flex items-center p-1 rounded-xl bg-[var(--bg)] border border-[var(--border)] text-xs font-mono">
+          {/* Desktop Navigation Tabs Header */}
+          <nav className="hidden sm:flex items-center p-1 rounded-xl bg-[var(--bg)] border border-[var(--border)] text-xs font-mono">
             <button
+              type="button"
               onClick={() => setActiveTab("overview")}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
                 activeTab === "overview"
@@ -639,9 +650,10 @@ export default function AdminDashboardPage() {
               }`}
             >
               <LayoutDashboard size={14} />
-              <span className="hidden sm:inline">Overview</span>
+              <span>Overview</span>
             </button>
             <button
+              type="button"
               onClick={() => setActiveTab("users")}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
                 activeTab === "users"
@@ -650,9 +662,10 @@ export default function AdminDashboardPage() {
               }`}
             >
               <Users size={14} />
-              <span className="hidden sm:inline">Users</span>
+              <span>Users</span>
             </button>
             <button
+              type="button"
               onClick={() => setActiveTab("database")}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
                 activeTab === "database"
@@ -661,9 +674,10 @@ export default function AdminDashboardPage() {
               }`}
             >
               <Database size={14} />
-              <span className="hidden sm:inline">DB Studio</span>
+              <span>DB Studio</span>
             </button>
             <button
+              type="button"
               onClick={() => setActiveTab("logs")}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
                 activeTab === "logs"
@@ -672,23 +686,23 @@ export default function AdminDashboardPage() {
               }`}
             >
               <Activity size={14} />
-              <span className="hidden sm:inline">Audit Logs</span>
+              <span>Audit Logs</span>
             </button>
           </nav>
 
           {/* Right Controls: Live User Online + Theme + User Badge */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
             {/* Live User Online Indicator */}
             <div 
-              className="flex items-center gap-2 px-2.5 py-1 rounded-lg bg-[var(--bg)] border border-[var(--border)] text-xs font-mono"
-              title="Jumlah pengguna aktif dalam 15 menit terakhir"
+              className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-[var(--bg)] border border-[var(--border)] text-xs font-mono"
+              title="Jumlah akun pengguna yang sedang login & aktif (< 15 menit)"
             >
-              <span className="relative flex h-2 w-2">
+              <span className="relative flex h-2 w-2 shrink-0">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
               </span>
               <span className="text-emerald-400 font-bold">{analyticsData?.users?.onlineCount ?? 1}</span>
-              <span className="text-[var(--text-muted)] text-[11px] hidden sm:inline">Online</span>
+              <span className="text-[var(--text-muted)] text-[10px]">online</span>
             </div>
 
             <div className="hidden md:flex items-center gap-1.5 text-xs font-mono text-[var(--text-muted)]">
@@ -696,6 +710,60 @@ export default function AdminDashboardPage() {
             </div>
             <ThemeToggle />
           </div>
+        </div>
+
+        {/* Mobile Navigation Bar (Horizontal Scrollable Tabs for Mobile Screens) */}
+        <div className="sm:hidden px-3 pb-2 pt-1 border-t border-[var(--border-subtle)] bg-[var(--surface)] overflow-x-auto no-scrollbar">
+          <nav className="flex items-center gap-1 text-xs font-mono w-max">
+            <button
+              type="button"
+              onClick={() => setActiveTab("overview")}
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg transition-all cursor-pointer ${
+                activeTab === "overview"
+                  ? "bg-amber-500 text-black font-bold"
+                  : "text-[var(--text-muted)] hover:text-[var(--text-primary)] bg-[var(--bg)]"
+              }`}
+            >
+              <LayoutDashboard size={13} />
+              <span>Overview</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab("users")}
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg transition-all cursor-pointer ${
+                activeTab === "users"
+                  ? "bg-amber-500 text-black font-bold"
+                  : "text-[var(--text-muted)] hover:text-[var(--text-primary)] bg-[var(--bg)]"
+              }`}
+            >
+              <Users size={13} />
+              <span>Users</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab("database")}
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg transition-all cursor-pointer ${
+                activeTab === "database"
+                  ? "bg-amber-500 text-black font-bold"
+                  : "text-[var(--text-muted)] hover:text-[var(--text-primary)] bg-[var(--bg)]"
+              }`}
+            >
+              <Database size={13} />
+              <span>DB Studio</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab("logs")}
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg transition-all cursor-pointer ${
+                activeTab === "logs"
+                  ? "bg-amber-500 text-black font-bold"
+                  : "text-[var(--text-muted)] hover:text-[var(--text-primary)] bg-[var(--bg)]"
+              }`}
+            >
+              <Activity size={13} />
+              <span>Audit Logs</span>
+            </button>
+          </nav>
         </div>
       </header>
 
@@ -742,82 +810,82 @@ export default function AdminDashboardPage() {
             </div>
 
             {/* Quick Metrics Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+            <div className="grid grid-cols-2 lg:grid-cols-5 gap-2.5 sm:gap-4">
               {/* Card 0: Online Users (Live) */}
-              <div className="technical-card rounded-xl p-4 space-y-2 border-emerald-500/30 bg-emerald-500/[0.04]">
+              <div className="technical-card rounded-xl p-3 sm:p-4 space-y-1.5 sm:space-y-2 border-emerald-500/30 bg-emerald-500/[0.04]">
                 <div className="flex items-center justify-between text-xs font-mono text-emerald-400">
                   <div className="flex items-center gap-1.5">
                     <span className="relative flex h-2 w-2">
                       <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                       <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
                     </span>
-                    <span>USER ONLINE (LIVE)</span>
+                    <span className="text-[10px] sm:text-xs truncate">USER ONLINE (DB)</span>
                   </div>
-                  <Radio size={14} className="text-emerald-400" />
+                  <Radio size={13} className="text-emerald-400 shrink-0" />
                 </div>
-                <div className="text-2xl font-bold font-mono text-emerald-400 flex items-baseline gap-1.5">
-                  <span>{analyticsData?.users?.onlineCount ?? 0}</span>
+                <div className="text-xl sm:text-2xl font-bold font-mono text-emerald-400 flex items-baseline gap-1.5">
+                  <span>{analyticsData?.users?.onlineCount ?? 1}</span>
                   <span className="text-xs font-mono font-normal text-[var(--text-muted)]">user</span>
                 </div>
-                <div className="text-[11px] font-mono text-[var(--text-secondary)]">
-                  Aktif &lt; 15 menit terakhir
+                <div className="text-[10px] sm:text-[11px] font-mono text-[var(--text-secondary)] truncate">
+                  Akun login aktif &lt; 15 menit
                 </div>
               </div>
 
               {/* Card 1: Users */}
-              <div className="technical-card rounded-xl p-4 space-y-2">
+              <div className="technical-card rounded-xl p-3 sm:p-4 space-y-1.5 sm:space-y-2">
                 <div className="flex items-center justify-between text-xs font-mono text-[var(--text-muted)]">
-                  <span>TOTAL PENGGUNA</span>
-                  <Users size={15} className="text-sky-400" />
+                  <span className="text-[10px] sm:text-xs truncate">TOTAL PENGGUNA</span>
+                  <Users size={14} className="text-sky-400 shrink-0" />
                 </div>
-                <div className="text-2xl font-bold font-mono">
+                <div className="text-xl sm:text-2xl font-bold font-mono">
                   {analyticsData?.users?.total ?? "..."}
                 </div>
-                <div className="flex items-center gap-2 text-[11px] font-mono text-[var(--text-secondary)]">
-                  <span className="text-emerald-400">+{analyticsData?.users?.newLast7Days ?? 0} baru (7 hr)</span>
+                <div className="flex items-center gap-1.5 text-[10px] sm:text-[11px] font-mono text-[var(--text-secondary)] truncate">
+                  <span className="text-emerald-400">+{analyticsData?.users?.newLast7Days ?? 0} baru</span>
                   <span>•</span>
                   <span>{analyticsData?.users?.active ?? 0} aktif</span>
                 </div>
               </div>
 
               {/* Card 2: Financials Total Transaksi */}
-              <div className="technical-card rounded-xl p-4 space-y-2">
+              <div className="technical-card rounded-xl p-3 sm:p-4 space-y-1.5 sm:space-y-2">
                 <div className="flex items-center justify-between text-xs font-mono text-[var(--text-muted)]">
-                  <span>TOTAL TRANSAKSI</span>
-                  <Wallet size={15} className="text-emerald-400" />
+                  <span className="text-[10px] sm:text-xs truncate">TOTAL TRANSAKSI</span>
+                  <Wallet size={14} className="text-emerald-400 shrink-0" />
                 </div>
-                <div className="text-2xl font-bold font-mono">
+                <div className="text-xl sm:text-2xl font-bold font-mono">
                   {analyticsData?.financials?.totalTransactions ?? "..."}
                 </div>
-                <div className="text-[11px] font-mono text-emerald-400">
-                  {analyticsData ? formatRupiah(analyticsData.financials.totalIncome) : "..."} Pemasukan
+                <div className="text-[10px] sm:text-[11px] font-mono text-emerald-400 truncate">
+                  {analyticsData ? formatRupiah(analyticsData.financials.totalIncome) : "..."}
                 </div>
               </div>
 
               {/* Card 3: Database Latency & Engine */}
-              <div className="technical-card rounded-xl p-4 space-y-2">
+              <div className="technical-card rounded-xl p-3 sm:p-4 space-y-1.5 sm:space-y-2">
                 <div className="flex items-center justify-between text-xs font-mono text-[var(--text-muted)]">
-                  <span>DB QUERY LATENCY</span>
-                  <Server size={15} className="text-amber-400" />
+                  <span className="text-[10px] sm:text-xs truncate">DB LATENCY</span>
+                  <Server size={14} className="text-amber-400 shrink-0" />
                 </div>
-                <div className="text-2xl font-bold font-mono text-amber-400">
+                <div className="text-xl sm:text-2xl font-bold font-mono text-amber-400">
                   {analyticsData?.telemetry?.dbLatencyMs ?? "..."} ms
                 </div>
-                <div className="text-[11px] font-mono text-[var(--text-secondary)]">
-                  Neon PostgreSQL Serverless
+                <div className="text-[10px] sm:text-[11px] font-mono text-[var(--text-secondary)] truncate">
+                  PostgreSQL Serverless
                 </div>
               </div>
 
               {/* Card 4: 24h Traffic & Uptime */}
-              <div className="technical-card rounded-xl p-4 space-y-2">
+              <div className="technical-card rounded-xl p-3 sm:p-4 space-y-1.5 sm:space-y-2 col-span-2 lg:col-span-1">
                 <div className="flex items-center justify-between text-xs font-mono text-[var(--text-muted)]">
-                  <span>API HEALTH & UPTIME</span>
-                  <Activity size={15} className="text-emerald-400" />
+                  <span className="text-[10px] sm:text-xs truncate">API HEALTH & UPTIME</span>
+                  <Activity size={14} className="text-emerald-400 shrink-0" />
                 </div>
-                <div className="text-2xl font-bold font-mono text-emerald-400">
+                <div className="text-xl sm:text-2xl font-bold font-mono text-emerald-400">
                   {analyticsData?.telemetry?.uptimePercent ?? 100}%
                 </div>
-                <div className="text-[11px] font-mono text-[var(--text-secondary)]">
+                <div className="text-[10px] sm:text-[11px] font-mono text-[var(--text-secondary)] truncate">
                   {analyticsData?.telemetry?.totalRequests24h ?? 0} total requests (24h)
                 </div>
               </div>
@@ -826,10 +894,10 @@ export default function AdminDashboardPage() {
             {/* ============================================================== */}
             {/* SELF-HOSTED WEB ANALYTICS SUITE (VERCEL-STYLE TELEMETRY)      */}
             {/* ============================================================== */}
-            <div className="technical-card rounded-2xl p-5 space-y-5 border border-[var(--border)]">
+            <div className="technical-card rounded-2xl p-4 sm:p-5 space-y-4 sm:space-y-5 border border-[var(--border)]">
               {/* Top Header: Domain Link, Online Indicator & Time Controls */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[var(--border)]">
-                <div className="flex items-center gap-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-3 border-b border-[var(--border)]">
+                <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
                   <a
                     href="https://zail-track.vercel.app"
                     target="_blank"
@@ -840,17 +908,17 @@ export default function AdminDashboardPage() {
                     <span>zail-track.vercel.app</span>
                     <ExternalLink size={11} className="text-[var(--text-muted)]" />
                   </a>
-                  <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-[11px] font-mono text-emerald-400 font-semibold">
+                  <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-[10px] sm:text-[11px] font-mono text-emerald-400 font-semibold">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                    <span>{analyticsData?.webAnalytics?.liveOnline ?? analyticsData?.users?.onlineCount ?? 114} online</span>
+                    <span>{analyticsData?.webAnalytics?.liveOnline ?? 5} traffic live</span>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <span className="px-2.5 py-1 rounded-md text-[10px] font-mono bg-[var(--surface-hover)] border border-[var(--border)] text-[var(--text-secondary)]">
+                  <span className="px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-md text-[9px] sm:text-[10px] font-mono bg-[var(--surface-hover)] border border-[var(--border)] text-[var(--text-secondary)]">
                     Production
                   </span>
-                  <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-mono bg-[var(--surface-hover)] border border-[var(--border)] text-[var(--text-primary)]">
+                  <div className="flex items-center gap-1.5 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-md text-[10px] sm:text-xs font-mono bg-[var(--surface-hover)] border border-[var(--border)] text-[var(--text-primary)]">
                     <Calendar size={12} className="text-[var(--text-muted)]" />
                     <span>7 Hari Terakhir</span>
                   </div>
@@ -858,20 +926,20 @@ export default function AdminDashboardPage() {
               </div>
 
               {/* Metric Tabs: Visitors | Page Views | Bounce Rate */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-0 border border-[var(--border)] rounded-xl overflow-hidden divide-y sm:divide-y-0 sm:divide-x divide-[var(--border)]">
+              <div className="grid grid-cols-3 gap-0 border border-[var(--border)] rounded-xl overflow-hidden divide-x divide-[var(--border)]">
                 {/* Tab 1: Visitors */}
                 <button
                   onClick={() => setWaActiveMetric("visitors")}
-                  className={`p-4 text-left transition-all cursor-pointer relative ${
+                  className={`p-2.5 sm:p-4 text-left transition-all cursor-pointer relative ${
                     waActiveMetric === "visitors"
                       ? "bg-[var(--surface-hover)]"
                       : "bg-[var(--surface)] hover:bg-[var(--surface-hover)]/50"
                   }`}
                 >
-                  <div className="text-xs font-mono text-[var(--text-muted)] uppercase tracking-wider mb-1">
+                  <div className="text-[10px] sm:text-xs font-mono text-[var(--text-muted)] uppercase tracking-wider mb-0.5 sm:mb-1 truncate">
                     Visitors
                   </div>
-                  <div className="text-2xl sm:text-3xl font-bold font-mono text-[var(--text-primary)]">
+                  <div className="text-base sm:text-3xl font-bold font-mono text-[var(--text-primary)]">
                     {analyticsData?.webAnalytics?.visitors ?? 257}
                   </div>
                   {waActiveMetric === "visitors" && (
@@ -882,16 +950,16 @@ export default function AdminDashboardPage() {
                 {/* Tab 2: Page Views */}
                 <button
                   onClick={() => setWaActiveMetric("pageViews")}
-                  className={`p-4 text-left transition-all cursor-pointer relative ${
+                  className={`p-2.5 sm:p-4 text-left transition-all cursor-pointer relative ${
                     waActiveMetric === "pageViews"
                       ? "bg-[var(--surface-hover)]"
                       : "bg-[var(--surface)] hover:bg-[var(--surface-hover)]/50"
                   }`}
                 >
-                  <div className="text-xs font-mono text-[var(--text-muted)] uppercase tracking-wider mb-1">
+                  <div className="text-[10px] sm:text-xs font-mono text-[var(--text-muted)] uppercase tracking-wider mb-0.5 sm:mb-1 truncate">
                     Page Views
                   </div>
-                  <div className="text-2xl sm:text-3xl font-bold font-mono text-[var(--text-primary)]">
+                  <div className="text-base sm:text-3xl font-bold font-mono text-[var(--text-primary)]">
                     {new Intl.NumberFormat("id-ID").format(analyticsData?.webAnalytics?.pageViews ?? 43043)}
                   </div>
                   {waActiveMetric === "pageViews" && (
@@ -902,20 +970,20 @@ export default function AdminDashboardPage() {
                 {/* Tab 3: Bounce Rate */}
                 <button
                   onClick={() => setWaActiveMetric("bounceRate")}
-                  className={`p-4 text-left transition-all cursor-pointer relative ${
+                  className={`p-2.5 sm:p-4 text-left transition-all cursor-pointer relative ${
                     waActiveMetric === "bounceRate"
                       ? "bg-[var(--surface-hover)]"
                       : "bg-[var(--surface)] hover:bg-[var(--surface-hover)]/50"
                   }`}
                 >
-                  <div className="text-xs font-mono text-[var(--text-muted)] uppercase tracking-wider mb-1">
+                  <div className="text-[10px] sm:text-xs font-mono text-[var(--text-muted)] uppercase tracking-wider mb-0.5 sm:mb-1 truncate">
                     Bounce Rate
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-2xl sm:text-3xl font-bold font-mono text-[var(--text-primary)]">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="text-base sm:text-3xl font-bold font-mono text-[var(--text-primary)]">
                       {analyticsData?.webAnalytics?.bounceRate ?? 20}%
                     </span>
-                    <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-rose-500/15 text-rose-400 border border-rose-500/30">
+                    <span className="hidden sm:inline-block px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-rose-500/15 text-rose-400 border border-rose-500/30">
                       {analyticsData?.webAnalytics?.bounceRateChange ?? "+20%"}
                     </span>
                   </div>
@@ -1047,6 +1115,8 @@ export default function AdminDashboardPage() {
                           className="cursor-pointer"
                           onMouseEnter={() => setWaHoveredPoint(idx)}
                           onMouseLeave={() => setWaHoveredPoint(null)}
+                          onTouchStart={() => setWaHoveredPoint(idx)}
+                          onClick={() => setWaHoveredPoint(waHoveredPoint === idx ? null : idx)}
                         >
                           <circle
                             cx={pt.x}
@@ -1770,8 +1840,12 @@ export default function AdminDashboardPage() {
 
             {/* Users Table Grid */}
             <div className="technical-card rounded-2xl overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs font-mono">
+              <div className="sm:hidden px-3.5 py-1.5 text-[10px] font-mono text-[var(--text-muted)] bg-[var(--bg)] border-b border-[var(--border)] flex items-center justify-between">
+                <span>← Geser tabel untuk kolom lengkap →</span>
+                <span className="text-[9px] uppercase px-1 rounded bg-[var(--surface)] border border-[var(--border)]">Scrollable</span>
+              </div>
+              <div className="overflow-x-auto touch-scroll">
+                <table className="w-full min-w-[720px] text-left text-xs font-mono">
                   <thead className="bg-[var(--bg-secondary)] border-b border-[var(--border)] text-[var(--text-secondary)] uppercase tracking-wider text-[11px]">
                     <tr>
                       <th className="py-3 px-4">ID</th>
@@ -1813,7 +1887,7 @@ export default function AdminDashboardPage() {
                                 {u.last_region && (
                                   <span className="text-[10px] font-mono text-[var(--text-muted)] font-normal flex items-center gap-1 mt-0.5 pl-4">
                                     <span>📍</span>
-                                    <span>{u.last_region}</span>
+                                    <span>{formatDisplayRegion(u.last_region, u.last_ip)}</span>
                                   </span>
                                 )}
                               </div>
@@ -2142,8 +2216,12 @@ export default function AdminDashboardPage() {
 
             {/* Table Rows Grid */}
             <div className="technical-card rounded-2xl overflow-hidden">
-              <div className="overflow-x-auto max-h-[500px]">
-                <table className="w-full text-left text-xs font-mono">
+              <div className="sm:hidden px-3.5 py-1.5 text-[10px] font-mono text-[var(--text-muted)] bg-[var(--bg)] border-b border-[var(--border)] flex items-center justify-between">
+                <span>← Geser untuk melihat seluruh kolom tabel →</span>
+                <span className="text-[9px] uppercase px-1 rounded bg-[var(--surface)] border border-[var(--border)]">Scrollable</span>
+              </div>
+              <div className="overflow-x-auto max-h-[500px] touch-scroll">
+                <table className="w-full min-w-[650px] text-left text-xs font-mono">
                   <thead className="bg-[var(--bg-secondary)] border-b border-[var(--border)] text-[var(--text-secondary)] uppercase tracking-wider text-[11px] sticky top-0 z-10">
                     <tr>
                       {tableRows.length > 0 &&
@@ -2381,9 +2459,13 @@ export default function AdminDashboardPage() {
 
             {/* Log Table Container */}
             <div className="technical-card rounded-2xl overflow-hidden">
-              <div className="overflow-x-auto max-h-[550px]">
+              <div className="sm:hidden px-3.5 py-1.5 text-[10px] font-mono text-[var(--text-muted)] bg-[var(--bg)] border-b border-[var(--border)] flex items-center justify-between">
+                <span>← Geser untuk melihat log lengkap →</span>
+                <span className="text-[9px] uppercase px-1 rounded bg-[var(--surface)] border border-[var(--border)]">Scrollable</span>
+              </div>
+              <div className="overflow-x-auto max-h-[550px] touch-scroll">
                 {logSubTab === "audit" ? (
-                  <table className="w-full text-left text-xs font-mono">
+                  <table className="w-full min-w-[720px] text-left text-xs font-mono">
                     <thead className="bg-[var(--bg-secondary)] border-b border-[var(--border)] text-[var(--text-secondary)] uppercase tracking-wider text-[11px] sticky top-0 z-10">
                       <tr>
                         <th className="py-3 px-4">Timestamp</th>
@@ -2433,13 +2515,7 @@ export default function AdminDashboardPage() {
                             <td className="py-2.5 px-4">
                               <span className="px-1.5 py-0.5 rounded text-[10px] bg-sky-500/10 text-sky-400 border border-sky-500/30 inline-flex items-center gap-1">
                                 <span>📍</span>
-                                <span>
-                                  {log.region && !log.region.startsWith("Localhost")
-                                    ? log.region
-                                    : log.ip_address === "127.0.0.1" || log.ip_address === "::1" || !log.ip_address
-                                    ? "Localhost (Dev)"
-                                    : log.region || "Ashburn, US"}
-                                </span>
+                                <span>{formatDisplayRegion(log.region, log.ip_address)}</span>
                               </span>
                             </td>
                           </tr>
@@ -2454,7 +2530,7 @@ export default function AdminDashboardPage() {
                     </tbody>
                   </table>
                 ) : logSubTab === "bot" ? (
-                  <table className="w-full text-left text-xs font-mono">
+                  <table className="w-full min-w-[650px] text-left text-xs font-mono">
                     <thead className="bg-[var(--bg-secondary)] border-b border-[var(--border)] text-[var(--text-secondary)] uppercase tracking-wider text-[11px] sticky top-0 z-10">
                       <tr>
                         <th className="py-3 px-4">Timestamp</th>
@@ -2475,7 +2551,7 @@ export default function AdminDashboardPage() {
                             </td>
                             <td className="py-2.5 px-4 font-bold text-sky-400">{log.command}</td>
                             <td className="py-2.5 px-4 text-[var(--text-muted)]">{log.chat_id}</td>
-                            <td className="py-2.5 px-4">{log.username ? `@${log.username}` : "—"}</td>
+                            <td className="py-2.5 px-4 font-medium text-[var(--text-primary)]">{log.username || "—"}</td>
                             <td className="py-2.5 px-4 max-w-xs truncate text-[var(--text-muted)]">
                               {log.raw_text || "—"}
                             </td>
@@ -2503,7 +2579,7 @@ export default function AdminDashboardPage() {
                     </tbody>
                   </table>
                 ) : (
-                  <table className="w-full text-left text-xs font-mono">
+                  <table className="w-full min-w-[720px] text-left text-xs font-mono">
                     <thead className="bg-[var(--bg-secondary)] border-b border-[var(--border)] text-[var(--text-secondary)] uppercase tracking-wider text-[11px] sticky top-0 z-10">
                       <tr>
                         <th className="py-3 px-4">Timestamp</th>
@@ -2542,13 +2618,7 @@ export default function AdminDashboardPage() {
                             <td className="py-2.5 px-4">
                               <span className="px-1.5 py-0.5 rounded text-[10px] bg-sky-500/10 text-sky-400 border border-sky-500/30 inline-flex items-center gap-1">
                                 <span>📍</span>
-                                <span>
-                                  {log.region && !log.region.startsWith("Localhost")
-                                    ? log.region
-                                    : log.ip_address === "127.0.0.1" || log.ip_address === "::1" || !log.ip_address
-                                    ? "Localhost (Dev)"
-                                    : log.region || "Ashburn, US"}
-                                </span>
+                                <span>{formatDisplayRegion(log.region, log.ip_address)}</span>
                               </span>
                             </td>
                           </tr>
@@ -2734,7 +2804,7 @@ export default function AdminDashboardPage() {
                   <span className="text-[var(--text-muted)] block text-[10px]">WILAYAH / REGION</span>
                   <span className="text-amber-400 flex items-center gap-1 font-semibold">
                     <span>📍</span>
-                    <span>{selectedUserForAction.last_region || "Localhost (Dev)"}</span>
+                    <span>{formatDisplayRegion(selectedUserForAction.last_region, selectedUserForAction.last_ip)}</span>
                   </span>
                 </div>
 

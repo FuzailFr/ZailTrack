@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { getDb, initDbSchema } from "@/lib/db";
 import { setSessionCookie } from "@/lib/auth";
-import { checkRateLimit, getClientIp, getClientRegion } from "@/lib/security";
+import { checkRateLimit, checkAccountLockout, recordFailedLogin, resetFailedLogin, getClientIp, getClientRegion } from "@/lib/security";
 import { logAudit } from "@/lib/logger";
 
 export async function POST(request: Request) {
@@ -42,6 +42,27 @@ export async function POST(request: Request) {
       );
     }
 
+    // 2. Proteksi Brute-Force: Cek apakah akun sedang terkunci karena salah password berturut-turut
+    const lockout = checkAccountLockout(username);
+    if (lockout.locked) {
+      await logAudit({
+        action: "auth:account_locked",
+        username,
+        ipAddress: ip,
+        region,
+        userAgent,
+        status: "warning",
+        details: { reason: "Account locked out due to multiple failed attempts", remainingSec: lockout.remainingSec },
+      });
+      return NextResponse.json(
+        {
+          status: "error",
+          message: `Akun ini terkunci sementara karena 5 kali percobaan gagal. Harap coba lagi dalam ${lockout.remainingSec} detik.`,
+        },
+        { status: 423 }
+      );
+    }
+
     await initDbSchema();
     const sql = getDb();
 
@@ -52,6 +73,7 @@ export async function POST(request: Request) {
     `;
 
     if (users.length === 0) {
+      recordFailedLogin(username);
       await logAudit({
         action: "auth:login_failed",
         username,
@@ -109,6 +131,7 @@ export async function POST(request: Request) {
     const isPasswordValid = await bcrypt.compare(password, user.password);
 
     if (!isPasswordValid) {
+      const failState = recordFailedLogin(username);
       await logAudit({
         userId: user.id,
         username: user.username,
@@ -118,13 +141,27 @@ export async function POST(request: Request) {
         region,
         userAgent,
         status: "warning",
-        details: { reason: "Invalid password" },
+        details: { reason: "Invalid password", attempts: failState.attempts },
       });
+
+      if (failState.locked) {
+        return NextResponse.json(
+          {
+            status: "error",
+            message: `Akun ini terkunci sementara karena 5 kali percobaan gagal. Harap coba lagi dalam ${failState.remainingSec} detik.`,
+          },
+          { status: 423 }
+        );
+      }
+
       return NextResponse.json(
         { status: "error", message: "Username atau password salah." },
         { status: 401 }
       );
     }
+
+    // Reset lockout counter on success
+    resetFailedLogin(username);
 
     // Update last_active_at
     await sql`

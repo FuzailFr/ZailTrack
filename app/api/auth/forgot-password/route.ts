@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getDb, initDbSchema } from "@/lib/db";
-import { checkRateLimit, generateOneTimeToken, getClientIp, getClientRegion } from "@/lib/security";
+import { checkRateLimit, generateOneTimeToken, hashToken, getClientIp, getClientRegion } from "@/lib/security";
 import { logAudit } from "@/lib/logger";
 
 export async function POST(request: Request) {
@@ -66,13 +66,14 @@ export async function POST(request: Request) {
       );
     }
 
-    // Buat token satu kali pakai berlaku 1 jam
+    // Buat token satu kali pakai berlaku 1 jam (disimpan dalam bentuk cryptographic SHA-256 hash)
     const resetToken = generateOneTimeToken();
+    const hashedResetToken = hashToken(resetToken);
     const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 jam
 
     await sql`
       UPDATE users 
-      SET reset_token = ${resetToken}, reset_token_expires_at = ${expiresAt}
+      SET reset_token = ${hashedResetToken}, reset_token_expires_at = ${expiresAt}
       WHERE id = ${user.id}
     `;
 

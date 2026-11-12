@@ -37,31 +37,23 @@ export async function GET(request: Request) {
         SELECT 
           u.id, u.username, u.role, u.status, u.telegram_chat_id, u.created_at, u.last_active_at,
           COUNT(t.id)::int AS total_transactions,
-          (
-            SELECT al.ip_address 
-            FROM audit_logs al 
-            WHERE al.user_id = u.id OR al.username = u.username 
-            ORDER BY al.id DESC LIMIT 1
-          ) AS last_ip,
-          (
-            SELECT al.region 
-            FROM audit_logs al 
-            WHERE al.user_id = u.id OR al.username = u.username 
-            ORDER BY al.id DESC LIMIT 1
-          ) AS last_region,
-          (
-            SELECT al.action 
-            FROM audit_logs al 
-            WHERE al.user_id = u.id OR al.username = u.username 
-            ORDER BY al.id DESC LIMIT 1
-          ) AS last_action
+          latest_log.last_ip,
+          latest_log.last_region,
+          latest_log.last_action
         FROM users u
         LEFT JOIN transactions t ON t.user_id = u.id
+        LEFT JOIN LATERAL (
+          SELECT al.ip_address AS last_ip, al.region AS last_region, al.action AS last_action
+          FROM audit_logs al 
+          WHERE al.user_id = u.id OR al.username = u.username 
+          ORDER BY al.id DESC 
+          LIMIT 1
+        ) latest_log ON true
         WHERE (${searchFilter}::text IS NULL OR LOWER(u.username) LIKE ${searchFilter})
           AND (${roleVal}::text IS NULL OR u.role = ${roleVal})
           AND (${dbStatus}::text IS NULL OR u.status = ${dbStatus})
           AND (${isOnlineFilter}::boolean = false OR u.last_active_at >= NOW() - INTERVAL '15 minutes')
-        GROUP BY u.id, u.username, u.role, u.status, u.telegram_chat_id, u.created_at, u.last_active_at
+        GROUP BY u.id, u.username, u.role, u.status, u.telegram_chat_id, u.created_at, u.last_active_at, latest_log.last_ip, latest_log.last_region, latest_log.last_action
         ORDER BY u.id DESC
         LIMIT ${limit} OFFSET ${offset}
       `,

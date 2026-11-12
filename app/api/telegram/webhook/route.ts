@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getDb, initDbSchema } from "@/lib/db";
 import { logBotActivity } from "@/lib/logger";
+import { isUpdateProcessed, markUpdateProcessed } from "@/lib/security";
 
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 
@@ -130,6 +131,7 @@ function buildMainMenuKeyboard(role: string = "user") {
 function parseTransactionText(rawText: string): {
   tipe: "income" | "expense";
   jumlah: number;
+  kategori: string;
   deskripsi: string;
 } | null {
   const text = rawText.trim();
@@ -197,6 +199,32 @@ function parseTransactionText(rawText: string): {
     .replace(/\s+/g, " ")
     .trim();
 
+  // Deteksi hashtag kategori (contoh: #makanan, #transport)
+  let kategori = "Umum";
+  const hashMatch = desc.match(/#(\w+)/);
+  if (hashMatch) {
+    const customTag = hashMatch[1];
+    kategori = customTag.charAt(0).toUpperCase() + customTag.slice(1).toLowerCase();
+    desc = desc.replace(hashMatch[0], "").trim();
+  } else {
+    // Klasifikasi kategori otomatis dari kata kunci
+    const descLower = (desc + " " + lower).toLowerCase();
+    if (tipe === "income") {
+      if (/gaji|honor|thr|bonus|freelance|proyek|invoice/.test(descLower)) kategori = "Gaji";
+      else if (/investasi|dividen|profit|crypto|saham/.test(descLower)) kategori = "Investasi";
+      else if (/jual|dagang|toko|omset|klien/.test(descLower)) kategori = "Bisnis";
+      else kategori = "Pemasukan Lain";
+    } else {
+      if (/kopi|makan|minum|cafe|resto|bakso|soto|mie|nasi|roti|jajan|snack|sarapan|lunch|dinner/.test(descLower)) kategori = "Makanan";
+      else if (/bensin|pertalite|pertamax|gojek|grab|maxim|ojol|krl|busway|tol|parkir|kereta|tiket/.test(descLower)) kategori = "Transport";
+      else if (/belanja|indomaret|alfamart|supermarket|mall|shopee|tokopedia|baju|sepatu/.test(descLower)) kategori = "Belanja";
+      else if (/listrik|pln|token|air|pdam|wifi|indihome|kuota|pulsa|bpjs|sewa|kost|kontrakan/.test(descLower)) kategori = "Tagihan";
+      else if (/bioskop|netflix|spotify|game|steam|youtube|nonton|hiburan/.test(descLower)) kategori = "Hiburan";
+      else if (/obat|apotek|dokter|klinik|vitamin|sehat/.test(descLower)) kategori = "Kesehatan";
+      else kategori = "Pengeluaran Lain";
+    }
+  }
+
   if (!desc) {
     desc = tipe === "income" ? "Pemasukan Telegram" : "Pengeluaran Telegram";
   }
@@ -204,6 +232,7 @@ function parseTransactionText(rawText: string): {
   return {
     tipe,
     jumlah: parsedAmount,
+    kategori,
     deskripsi: desc,
   };
 }
@@ -211,9 +240,23 @@ function parseTransactionText(rawText: string): {
 export async function POST(request: Request) {
   const startTime = performance.now();
   try {
+    // 1. Verifikasi secret token telegram webhook jika disetel
+    const secretToken = request.headers.get("x-telegram-bot-api-secret-token");
+    if (process.env.TELEGRAM_WEBHOOK_SECRET && secretToken !== process.env.TELEGRAM_WEBHOOK_SECRET) {
+      return NextResponse.json({ error: "Unauthorized webhook caller" }, { status: 401 });
+    }
+
     const update = await request.json().catch(() => null);
     if (!update) {
       return NextResponse.json({ ok: true });
+    }
+
+    // 2. Proteksi Deduplikasi Update Telegram (Idempotency)
+    if (update.update_id) {
+      if (isUpdateProcessed(update.update_id)) {
+        return NextResponse.json({ ok: true, duplicate: true });
+      }
+      markUpdateProcessed(update.update_id);
     }
 
     await initDbSchema();
@@ -786,6 +829,96 @@ export async function POST(request: Request) {
     }
 
     // ==============================================================
+    // COMMAND: /budget & /anggaran
+    // ==============================================================
+    if (lowerCmd === "/budget" || lowerCmd === "/anggaran") {
+      if (!currentUser) {
+        await sendTelegramMessage(chatId, "⚠️ Akun belum terhubung ke ZailTrack.");
+        return NextResponse.json({ ok: true });
+      }
+
+      const now = new Date();
+      const currentMonth = now.getMonth() + 1;
+      const currentYear = now.getFullYear();
+
+      const [budgets, spentRows] = await Promise.all([
+        sql`
+          SELECT kategori, nominal_limit
+          FROM budgets
+          WHERE user_id = ${currentUser.id} AND bulan = ${currentMonth} AND tahun = ${currentYear}
+          ORDER BY nominal_limit DESC
+        `,
+        sql`
+          SELECT COALESCE(kategori, 'Umum') AS kategori, COALESCE(SUM(jumlah), 0)::numeric AS total_spent
+          FROM transactions
+          WHERE user_id = ${currentUser.id} AND tipe = 'expense'
+            AND EXTRACT(MONTH FROM tanggal) = ${currentMonth}
+            AND EXTRACT(YEAR FROM tanggal) = ${currentYear}
+          GROUP BY kategori
+        `
+      ]);
+
+      if (budgets.length === 0) {
+        await sendTelegramMessage(
+          chatId,
+          `📊 <b>Anggaran Bulan Ini:</b>\n\n` +
+          `Belum ada target anggaran yang disetel untuk bulan ini.\n` +
+          `Atur batas pengeluaran kategori di dashboard web ZailTrack.`
+        );
+        return NextResponse.json({ ok: true });
+      }
+
+      const spentMap: Record<string, number> = {};
+      for (const r of spentRows) spentMap[r.kategori] = Number(r.total_spent || 0);
+
+      let msg = `🎯 <b>Status Anggaran Bulan Ini (${currentMonth}/${currentYear}):</b>\n\n`;
+      for (const b of budgets) {
+        const limit = Number(b.nominal_limit);
+        const spent = spentMap[b.kategori] || 0;
+        const pct = limit > 0 ? Math.round((spent / limit) * 100) : 0;
+        const icon = pct > 100 ? "🚨" : pct >= 80 ? "⚠️" : "✅";
+        msg += `${icon} <b>${b.kategori}</b>: ${formatRupiah(spent)} / ${formatRupiah(limit)} (${pct}%)\n`;
+      }
+
+      await sendTelegramMessage(chatId, msg);
+      return NextResponse.json({ ok: true });
+    }
+
+    // ==============================================================
+    // COMMAND: /tagihan & /recurring
+    // ==============================================================
+    if (lowerCmd === "/tagihan" || lowerCmd === "/bills") {
+      if (!currentUser) {
+        await sendTelegramMessage(chatId, "⚠️ Akun belum terhubung ke ZailTrack.");
+        return NextResponse.json({ ok: true });
+      }
+
+      const bills = await sql`
+        SELECT deskripsi, jumlah, kategori, TO_CHAR(tanggal_berikutnya, 'DD/MM/YYYY') AS due_date,
+               (tanggal_berikutnya - CURRENT_DATE)::int AS days_left
+        FROM recurring_transactions
+        WHERE user_id = ${currentUser.id} AND is_active = true AND tipe = 'expense'
+        ORDER BY tanggal_berikutnya ASC
+        LIMIT 8
+      `;
+
+      if (bills.length === 0) {
+        await sendTelegramMessage(chatId, `🧾 <b>Tagihan Rutin:</b>\n\nTidak ada tagihan aktif terdaftar.`);
+        return NextResponse.json({ ok: true });
+      }
+
+      let msg = `🧾 <b>Pengingat Tagihan & Transaksi Rutin:</b>\n\n`;
+      for (const b of bills) {
+        const days = Number(b.days_left);
+        const dueStr = days < 0 ? `⚠️ Terlewat ${Math.abs(days)} hari` : days === 0 ? `🚨 JATUH TEMPO HARI INI` : `⏳ ${days} hari lagi`;
+        msg += `• <b>${b.deskripsi}</b> (${formatRupiah(Number(b.jumlah))})\n  Jatuh tempo: ${b.due_date} [${dueStr}]\n\n`;
+      }
+
+      await sendTelegramMessage(chatId, msg);
+      return NextResponse.json({ ok: true });
+    }
+
+    // ==============================================================
     // COMMAND: /terakhir & /riwayat
     // ==============================================================
     if (lowerCmd === "/terakhir" || lowerCmd === "/riwayat") {
@@ -1066,8 +1199,8 @@ export async function POST(request: Request) {
     const tanggalDisplay = tanggalHariIni.split("-").reverse().join("/");
 
     await sql`
-      INSERT INTO transactions (user_id, tipe, jumlah, deskripsi, tanggal)
-      VALUES (${currentUser.id}, ${parsed.tipe}, ${parsed.jumlah}, ${parsed.deskripsi}, ${tanggalHariIni})
+      INSERT INTO transactions (user_id, tipe, jumlah, kategori, deskripsi, tanggal)
+      VALUES (${currentUser.id}, ${parsed.tipe}, ${parsed.jumlah}, ${parsed.kategori}, ${parsed.deskripsi}, ${tanggalHariIni})
     `;
 
     const icon = parsed.tipe === "income" ? "🟢" : "🔴";
@@ -1078,6 +1211,7 @@ export async function POST(request: Request) {
       `✅ <b>Transaksi Berhasil Dicatat!</b>\n\n` +
       `${icon} <b>Tipe:</b> ${tipeLabel}\n` +
       `💰 <b>Nominal:</b> <b>${formatRupiah(parsed.jumlah)}</b>\n` +
+      `📁 <b>Kategori:</b> <b>${parsed.kategori}</b>\n` +
       `📝 <b>Keterangan:</b> ${parsed.deskripsi}\n` +
       `📅 <b>Tanggal:</b> ${tanggalDisplay}\n` +
       `👤 <b>Akun:</b> @${currentUser.username}\n\n` +

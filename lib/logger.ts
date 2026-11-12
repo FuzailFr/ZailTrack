@@ -160,7 +160,7 @@ export async function logTraffic(input: TrafficLogInput): Promise<void> {
         ${input.responseTimeMs},
         ${input.userId || null},
         ${input.ipAddress || null},
-        ${input.region || "Localhost (ID)"},
+        ${input.region || (isPrivateIp(input.ipAddress || "") ? "Localhost (Dev)" : "Indonesia (ID)")},
         ${input.country || "Indonesia"},
         ${input.countryCode || "ID"},
         ${input.device || "Desktop"},

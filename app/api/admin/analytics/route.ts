@@ -290,14 +290,15 @@ export async function GET(request: Request) {
     // Ambil data live real-time dari Vercel Observability Engine jika tersedia
     const liveVercelData = await getLiveVercelAnalytics().catch(() => null);
     const webAnalytics = liveVercelData || dbWebAnalytics;
-    const effectiveOnlineCount = liveVercelData?.liveOnline ?? onlineCount;
+    const realUserOnlineCount = Math.max(1, Number(u.online_count || 0));
 
     return NextResponse.json({
       status: "success",
       overview: {
         users: {
           total: u.total,
-          onlineCount: effectiveOnlineCount,
+          onlineCount: realUserOnlineCount,
+          liveVisitors: liveVercelData?.liveOnline ?? onlineCount,
           admins: u.admin_count,
           developers: u.developer_count,
           regularUsers: u.user_count,
