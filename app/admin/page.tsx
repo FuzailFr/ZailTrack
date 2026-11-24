@@ -188,6 +188,17 @@ export default function AdminDashboardPage() {
     }
   }, [activeTab, analyticsRange, sessionUser]);
 
+  // Kunci scroll halaman latar belakang (body) saat modal terbuka agar tidak terjadi scroll bocor / aneh
+  useEffect(() => {
+    if (waExpandedModal) {
+      const prevOverflow = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+      return () => {
+        document.body.style.overflow = prevOverflow || "";
+      };
+    }
+  }, [waExpandedModal]);
+
   // ==============================================================
   // TAB 2: USER MANAGEMENT STATE
   // ==============================================================
@@ -1217,7 +1228,7 @@ export default function AdminDashboardPage() {
                         </div>
 
                         {/* Scrollable list inside card */}
-                        <div className="mt-3 space-y-2 max-h-56 overflow-y-auto pr-1.5 scrollbar-thin select-none">
+                        <div className="mt-3 space-y-2 max-h-56 overflow-y-auto pr-1.5 custom-scrollbar select-none overscroll-contain">
                           {countriesList.length === 0 ? (
                             <div className="py-6 text-center text-xs font-mono text-[var(--text-muted)]">
                               Belum ada data negara
@@ -1312,7 +1323,7 @@ export default function AdminDashboardPage() {
                         </div>
 
                         {/* Scrollable list inside card */}
-                        <div className="mt-3 space-y-2 max-h-56 overflow-y-auto pr-1.5 scrollbar-thin select-none">
+                        <div className="mt-3 space-y-2 max-h-56 overflow-y-auto pr-1.5 custom-scrollbar select-none overscroll-contain">
                           {currentDeviceList.map((item: any, idx: number) => (
                             <div key={item.name + idx} className="relative rounded-md overflow-hidden bg-[var(--surface)] text-xs font-mono py-1.5 px-2 hover:bg-[var(--surface-hover)] transition-colors">
                               <div
@@ -1359,7 +1370,7 @@ export default function AdminDashboardPage() {
                         </div>
 
                         {/* Scrollable list inside card */}
-                        <div className="mt-3 space-y-2 max-h-56 overflow-y-auto pr-1.5 scrollbar-thin select-none">
+                        <div className="mt-3 space-y-2 max-h-56 overflow-y-auto pr-1.5 custom-scrollbar select-none overscroll-contain">
                           {osList.map((item: any, idx: number) => (
                             <div key={item.name + idx} className="relative rounded-md overflow-hidden bg-[var(--surface)] text-xs font-mono py-1.5 px-2 hover:bg-[var(--surface-hover)] transition-colors">
                               <div
@@ -1421,8 +1432,14 @@ export default function AdminDashboardPage() {
               );
 
               return (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
-                  <div className="technical-card w-full max-w-2xl max-h-[85vh] rounded-2xl flex flex-col relative border border-[var(--border)] shadow-2xl overflow-hidden">
+                <div
+                  onClick={() => setWaExpandedModal(null)}
+                  className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs animate-in fade-in overscroll-contain"
+                >
+                  <div
+                    onClick={(e) => e.stopPropagation()}
+                    className="technical-card w-full max-w-xl max-h-[85vh] rounded-2xl flex flex-col relative border border-[var(--border)] shadow-2xl overflow-hidden overscroll-contain my-auto"
+                  >
                     {/* Header */}
                     <div className="p-5 border-b border-[var(--border)] relative bg-[var(--surface-dark,#0f1115)]">
                       <button
@@ -1458,8 +1475,8 @@ export default function AdminDashboardPage() {
                       </div>
                     </div>
 
-                    {/* Scrollable list */}
-                    <div className="flex-1 overflow-y-auto p-4 space-y-2.5 select-none scrollbar-thin">
+                    {/* Scrollable list with custom scrollbar & overscroll containment */}
+                    <div className="flex-1 overflow-y-auto p-4 space-y-2.5 select-none custom-scrollbar overscroll-contain max-h-[60vh]">
                       {filteredItems.length === 0 ? (
                         <div className="py-12 text-center text-xs font-mono text-[var(--text-muted)]">
                           Tidak ada data yang cocok dengan &quot;{waModalSearch}&quot;
@@ -1542,7 +1559,8 @@ export default function AdminDashboardPage() {
                     {/* Footer */}
                     <div className="p-3.5 border-t border-[var(--border)] bg-[var(--surface-dark,#0f1115)] flex items-center justify-between text-xs font-mono">
                       <span className="text-[11px] text-[var(--text-muted)]">
-                        Total {modalItems.length} entri terdata &bull; Scrollable
+                        Total {filteredItems.length} entri terdata
+                        {filteredItems.length > 4 ? " • Gulir untuk melihat semua" : ""}
                       </span>
                       <button
                         type="button"
