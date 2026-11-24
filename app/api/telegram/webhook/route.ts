@@ -311,18 +311,18 @@ export async function POST(request: Request) {
         const totalTx = countRes[0]?.total || 0;
         const totalPages = Math.ceil(totalTx / pageSize) || 1;
 
-        let msg = `📋 <b>Riwayat Transaksi (Halaman ${page}/${totalPages})</b>\n\n`;
+        let msg = `📋 <b>Riwayat Transaksi (Hal ${page}/${totalPages})</b>\n━━━━━━━━━━━━━━━━━\n`;
         if (txList.length === 0) {
-          msg += `<i>Belum ada catatan transaksi pada halaman ini.</i>\n`;
+          msg += `<i>Belum ada transaksi pada halaman ini.</i>\n`;
         } else {
           txList.forEach((tx: any, idx: number) => {
             const icon = tx.tipe === "income" ? "🟢" : "🔴";
             const sign = tx.tipe === "income" ? "+" : "-";
-            msg += `${offset + idx + 1}. ${icon} <b>${sign}${formatRupiah(Number(tx.jumlah))}</b>\n`;
-            msg += `    📝 ${tx.deskripsi} <i>(${tx.tanggal_str})</i>\n`;
+            msg += `${offset + idx + 1}. ${icon} <code>${sign}${formatRupiah(Number(tx.jumlah))}</code>\n`;
+            msg += `   📝 ${tx.deskripsi} • <i>${tx.tanggal_str}</i>\n\n`;
           });
         }
-        msg += `\n<i>Total transaksi Anda: ${totalTx} catatan</i>`;
+        msg += `━━━━━━━━━━━━━━━━━\n<i>Total transaksi: ${totalTx} catatan</i>`;
 
         // Keyboard navigasi pagination
         const navRow = [];
@@ -365,14 +365,15 @@ export async function POST(request: Request) {
         if (cmdName === "menu" || cmdName === "help") {
           const userRole = user ? user.role : "user";
           const helpMsg =
-            `📖 <b>ZailTrack Cockpit Bot — Menu Utama</b>\n\n` +
-            `Catat dan pantau keuangan Anda secara instan dari Telegram.\n\n` +
-            `<b>Format Cepat Catat Transaksi:</b>\n` +
+            `📖 <b>ZailTrack Cockpit — Menu Utama</b>\n` +
+            `━━━━━━━━━━━━━━━━━\n` +
+            `Catat dan pantau keuangan instan langsung dari Telegram.\n\n` +
+            `<b>Format Catat Cepat:</b>\n` +
             `• <code>keluar 35k kopi</code>\n` +
             `• <code>masuk 1.5jt freelance</code>\n` +
             `• <code>beli bensin 40000</code>\n` +
             `• <code>-15rb parkir</code> / <code>+500k bonus</code>\n\n` +
-            `Gunakan tombol interaktif di bawah untuk navigasi cepat:`;
+            `Pilih tombol interaktif di bawah untuk navigasi cepat:`;
 
           if (cbMessageId) {
             await editTelegramMessage(cbChatId, cbMessageId, helpMsg, buildMainMenuKeyboard(userRole));
@@ -410,11 +411,13 @@ export async function POST(request: Request) {
           const net = inc - exp;
 
           const saldoMsg =
-            `💰 <b>Ringkasan Saldo Bulan ${monthNames[currentMonth - 1]} ${currentYear}</b>\n\n` +
-            `🟢 <b>Pemasukan:</b> ${formatRupiah(inc)}\n` +
-            `🔴 <b>Pengeluaran:</b> ${formatRupiah(exp)}\n` +
-            `💼 <b>Saldo Bersih:</b> ${formatRupiah(net)}\n\n` +
-            `👤 Akun: <b>@${user.username}</b>`;
+            `📊 <b>Ringkasan Kas — ${monthNames[currentMonth - 1]} ${currentYear}</b>\n` +
+            `━━━━━━━━━━━━━━━━━\n` +
+            `🟢 Pemasukan:  <code>+${formatRupiah(inc)}</code>\n` +
+            `🔴 Pengeluaran: <code>-${formatRupiah(exp)}</code>\n` +
+            `━━━━━━━━━━━━━━━━━\n` +
+            `💰 Saldo Bersih: <code>${formatRupiah(net)}</code>\n\n` +
+            `👤 Akun: <b>${user.username}</b>`;
 
           const buttons = {
             inline_keyboard: [
@@ -452,14 +455,16 @@ export async function POST(request: Request) {
           const roleDisplay = u.role === "developer" ? "DEVELOPER (Root)" : u.role === "admin" ? "ADMIN" : "USER";
 
           const accMsg =
-            `👤 <b>Informasi Akun ZailTrack</b>\n\n` +
-            `• <b>ID Akun:</b> #${u.id}\n` +
-            `• <b>Username:</b> <code>${u.username}</code>\n` +
-            `• <b>Hak Akses:</b> <b>${roleDisplay}</b>\n` +
-            `• <b>Status Akun:</b> ${u.status === "active" ? "🟢 Aktif" : "🔴 " + u.status}\n` +
-            `• <b>Chat ID:</b> <code>${cbChatId}</code>\n` +
-            `• <b>Terdaftar:</b> ${joinedDate}\n` +
-            `• <b>Keamanan:</b> Bcrypt Salt 10 Hash (Zero-Trust)`;
+            `👤 <b>Profil Akun ZailTrack</b>\n` +
+            `━━━━━━━━━━━━━━━━━\n` +
+            `• ID Akun: <code>#${u.id}</code>\n` +
+            `• Username: <b>${u.username}</b>\n` +
+            `• Hak Akses: <b>${roleDisplay}</b>\n` +
+            `• Status: ${u.status === "active" ? "🟢 Aktif" : "🔴 " + u.status}\n` +
+            `• Chat ID: <code>${cbChatId}</code>\n` +
+            `• Terdaftar: ${joinedDate}\n` +
+            `━━━━━━━━━━━━━━━━━\n` +
+            `🔒 <i>Bcrypt Salt 10 • Keamanan Terverifikasi</i>`;
 
           const buttons = {
             inline_keyboard: [
@@ -487,12 +492,15 @@ export async function POST(request: Request) {
           const latency = Math.round(performance.now() - pingStart);
 
           const statusMsg =
-            `⚡ <b>Status Sistem & Telemetri</b>\n\n` +
-            `• <b>Server Status:</b> 🟢 Online (App Router Turbopack)\n` +
-            `• <b>Database:</b> Neon PostgreSQL Serverless\n` +
-            `• <b>Latensi Query:</b> ${latency} ms\n` +
-            `• <b>Protokol:</b> TLS 1.3 / HTTPS Secured\n` +
-            `• <b>Waktu Pengecekan:</b> ${new Date().toLocaleTimeString("id-ID")} WIB`;
+            `⚡ <b>Status Sistem & Telemetri</b>\n` +
+            `━━━━━━━━━━━━━━━━━\n` +
+            `• Engine Web: 🟢 <b>Online</b> (Next.js 16)\n` +
+            `• Database: <b>PostgreSQL Serverless</b>\n` +
+            `• Latensi DB: <code>${latency} ms</code>\n` +
+            `• Protokol: TLS 1.3 / HTTPS\n` +
+            `• Waktu Cek: ${new Date().toLocaleTimeString("id-ID")} WIB\n` +
+            `━━━━━━━━━━━━━━━━━\n` +
+            `<i>Sistem beroperasi normal tanpa kendala.</i>`;
 
           const buttons = {
             inline_keyboard: [
@@ -538,21 +546,22 @@ export async function POST(request: Request) {
           const cStat = cashflow[0];
 
           const adminMsg =
-            `👑 <b>Admin Platform Cockpit Summary</b>\n\n` +
-            `👥 <b>Statistik Pengguna:</b>\n` +
-            `• Total Pengguna: <b>${uStat.total}</b> akun\n` +
-            `• Admin / Developer: <b>${uStat.admins}</b> admin / <b>${uStat.developers}</b> dev\n` +
-            `• Akun Aktif: <b>${uStat.active_count}</b>\n\n` +
-            `📊 <b>Platform Ledger:</b>\n` +
+            `👑 <b>Executive Platform Summary</b>\n` +
+            `━━━━━━━━━━━━━━━━━\n` +
+            `👥 <b>Pengguna:</b>\n` +
+            `• Total Akun: <b>${uStat.total}</b> (🟢 ${uStat.active_count} aktif)\n` +
+            `• Staff: ${uStat.admins} Admin • ${uStat.developers} Dev\n\n` +
+            `📊 <b>Platform Cashflow:</b>\n` +
             `• Total Transaksi: <b>${tStat.total_tx}</b> catatan\n` +
-            `• Total Volume Masuk: ${formatRupiah(Number(cStat.total_in))}\n` +
-            `• Total Volume Keluar: ${formatRupiah(Number(cStat.total_out))}\n\n` +
-            `🌐 Buka Admin Dashboard web untuk kontrol penuh.`;
+            `• Total Masuk: <code>${formatRupiah(Number(cStat.total_in))}</code>\n` +
+            `• Total Keluar: <code>${formatRupiah(Number(cStat.total_out))}</code>\n` +
+            `━━━━━━━━━━━━━━━━━\n` +
+            `🌐 <i>Buka Admin Cockpit web untuk kontrol penuh.</i>`;
 
           const buttons = {
             inline_keyboard: [
               [
-                { text: "👥 Lihat User List", callback_data: "cmd:admin_users" },
+                { text: "👥 User List", callback_data: "cmd:admin_users" },
                 { text: "🏠 Menu Utama", callback_data: "cmd:menu" }
               ]
             ]
@@ -576,13 +585,13 @@ export async function POST(request: Request) {
             SELECT id, username, role, status FROM users ORDER BY id DESC LIMIT 8
           `;
 
-          let uMsg = `👥 <b>Daftar 8 Pengguna Terbaru:</b>\n\n`;
+          let uMsg = `👥 <b>8 Pengguna Terbaru Platform:</b>\n━━━━━━━━━━━━━━━━━\n`;
           userList.forEach((u: any) => {
-            const rTag = u.role === "developer" ? "[DEV]" : u.role === "admin" ? "[ADMIN]" : "[USER]";
+            const rTag = u.role === "developer" ? "DEV" : u.role === "admin" ? "ADMIN" : "USER";
             const statusIcon = u.status === "active" ? "🟢" : "🔴";
-            uMsg += `• #${u.id} <b>@${u.username}</b> ${rTag} ${statusIcon}\n`;
+            uMsg += `• #${u.id} <b>${u.username}</b> <code>[${rTag}]</code> ${statusIcon}\n`;
           });
-          uMsg += `\n<i>Kelola role dan status lengkap via Admin Web Dashboard.</i>`;
+          uMsg += `━━━━━━━━━━━━━━━━━\n<i>Manajemen role & status lengkap di Admin Dashboard.</i>`;
 
           const buttons = {
             inline_keyboard: [
@@ -614,12 +623,15 @@ export async function POST(request: Request) {
           ]);
 
           const devMsg =
-            `🛠 <b>Developer Engine Cockpit</b>\n\n` +
-            `• <b>Engine:</b> Neon PostgreSQL Serverless\n` +
-            `• <b>Versi:</b> ${(dbVer[0]?.ver || "").split(" on ")[0]}\n` +
-            `• <b>Tabel Database:</b> ${tableCount[0]?.count || 0} tabel publik\n` +
-            `• <b>Audit Trail:</b> ${logCount[0]?.count || 0} log tersimpan\n` +
-            `• <b>Runtime:</b> Next.js 16.4.5 + React 19 App Router`;
+            `🛠 <b>Developer Engine Telemetry</b>\n` +
+            `━━━━━━━━━━━━━━━━━\n` +
+            `• Database: <b>PostgreSQL Serverless</b>\n` +
+            `• Engine: ${(dbVer[0]?.ver || "").split(" on ")[0]}\n` +
+            `• Tabel: <code>${tableCount[0]?.count || 0}</code> tabel publik\n` +
+            `• Audit Trail: <code>${logCount[0]?.count || 0}</code> log tersimpan\n` +
+            `• Runtime: Next.js 16 (Turbopack)\n` +
+            `━━━━━━━━━━━━━━━━━\n` +
+            `<i>Pipeline telemetri beroperasi normal.</i>`;
 
           const buttons = {
             inline_keyboard: [
@@ -692,9 +704,10 @@ export async function POST(request: Request) {
 
           await sendTelegramMessage(
             chatId,
-            `✅ <b>Akun Berhasil Terhubung!</b>\n\n` +
-            `Halo <b>@${u.username}</b>! Akun Anda terhubung dengan hak akses <b>${u.role.toUpperCase()}</b>.\n\n` +
-            `Anda dapat langsung mencatat transaksi secara otomatis atau menggunakan tombol menu di bawah:`,
+            `✅ <b>Akun Berhasil Terhubung</b>\n` +
+            `━━━━━━━━━━━━━━━━━\n` +
+            `Halo <b>${u.username}</b>! Akun Anda aktif di ZailTrack dengan role <b>${u.role.toUpperCase()}</b>.\n\n` +
+            `Ketik transaksi langsung (contoh: <code>keluar 35k kopi</code>) atau gunakan menu di bawah:`,
             buildMainMenuKeyboard(u.role)
           );
           return NextResponse.json({ ok: true });
@@ -704,18 +717,24 @@ export async function POST(request: Request) {
       if (currentUser) {
         await sendTelegramMessage(
           chatId,
-          `👋 Halo <b>@${currentUser.username}</b>!\n\n` +
-          `Akun Telegram Anda aktif terhubung ke ZailTrack sebagai <b>${userRole.toUpperCase()}</b>.\n\n` +
-          `Ketik transaksi langsung (contoh: <code>keluar 35k kopi</code>) atau gunakan menu di bawah:`,
+          `👋 Halo <b>${currentUser.username}</b>!\n` +
+          `━━━━━━━━━━━━━━━━━\n` +
+          `Akun Telegram Anda terhubung ke ZailTrack sebagai <b>${userRole.toUpperCase()}</b>.\n\n` +
+          `<b>Contoh Catat Instan:</b>\n` +
+          `• <code>keluar 35k kopi</code>\n` +
+          `• <code>masuk 1.5jt freelance</code>\n` +
+          `• <code>beli bensin 40000</code>\n\n` +
+          `Pilih menu interaktif di bawah:`,
           buildMainMenuKeyboard(userRole)
         );
       } else {
         await sendTelegramMessage(
           chatId,
-          `👋 <b>Selamat datang di ZailTrack Bot!</b>\n\n` +
-          `Bot ini mencatat transaksi keuangan dan menyinkronkannya langsung ke dashboard web.\n\n` +
+          `👋 <b>Selamat Datang di ZailTrack Bot</b>\n` +
+          `━━━━━━━━━━━━━━━━━\n` +
+          `Catat transaksi keuangan otomatis dan sinkronkan langsung ke dashboard web Anda.\n\n` +
           `⚠️ <b>Akun Anda belum terhubung.</b>\n` +
-          `Buka dashboard web untuk menghubungkan akun Telegram Anda:`,
+          `Buka dashboard web untuk menghubungkan akun Telegram:`,
           {
             inline_keyboard: [
               [{ text: "🌐 Buka Web Dashboard", url: "https://zail-track.vercel.app/dashboard" }],
@@ -742,19 +761,21 @@ export async function POST(request: Request) {
     if (lowerCmd === "/help" || lowerCmd === "/bantuan" || lowerCmd === "/menu") {
       await sendTelegramMessage(
         chatId,
-        `📖 <b>Pusat Kendali ZailTrack Bot</b>\n\n` +
-        `<b>Daftar Perintah Teks:</b>\n` +
-        `• /saldo — Ringkasan pemasukan, pengeluaran & saldo bulan ini\n` +
-        `• /terakhir — 5 transaksi terakhir dengan navigasi halaman\n` +
-        `• /status — Latensi koneksi database & status server\n` +
-        `• /acc — Profil akun, hak akses & status enkripsi\n` +
-        `• /admin — Ringkasan platform khusus Admin\n` +
-        `• /menu — Tampilkan tombol menu interaktif\n\n` +
-        `<b>Contoh Catat Transaksi Cepat:</b>\n` +
+        `📖 <b>Pusat Kendali ZailTrack</b>\n` +
+        `━━━━━━━━━━━━━━━━━\n` +
+        `<b>Format Catat Transaksi Cepat:</b>\n` +
         `• <code>beli bensin 35k</code>\n` +
         `• <code>keluar 50000 makan</code>\n` +
         `• <code>masuk 1.5jt freelance</code>\n` +
-        `• <code>-15rb jajan</code> / <code>+500k transfer</code>`,
+        `• <code>-15rb jajan</code> / <code>+500k transfer</code>\n\n` +
+        `<b>Daftar Perintah Bot:</b>\n` +
+        `• /saldo — Ringkasan kas bulan ini\n` +
+        `• /terakhir — 5 catatan transaksi terakhir\n` +
+        `• /budget — Pantau batas anggaran kategori\n` +
+        `• /tagihan — Pengingat tagihan rutin\n` +
+        `• /status — Latensi database & server\n` +
+        `• /acc — Profil akun & hak akses\n` +
+        `• /menu — Tampilkan tombol navigasi`,
         buildMainMenuKeyboard(userRole)
       );
 
@@ -802,11 +823,13 @@ export async function POST(request: Request) {
 
       await sendTelegramMessage(
         chatId,
-        `💰 <b>Ringkasan Saldo Bulan ${monthNames[currentMonth - 1]} ${currentYear}</b>\n\n` +
-        `🟢 <b>Pemasukan:</b> ${formatRupiah(inc)}\n` +
-        `🔴 <b>Pengeluaran:</b> ${formatRupiah(exp)}\n` +
-        `💼 <b>Saldo Bersih:</b> ${formatRupiah(net)}\n\n` +
-        `👤 Akun: <b>@${currentUser.username}</b>`,
+        `📊 <b>Ringkasan Kas — ${monthNames[currentMonth - 1]} ${currentYear}</b>\n` +
+        `━━━━━━━━━━━━━━━━━\n` +
+        `🟢 Pemasukan:  <code>+${formatRupiah(inc)}</code>\n` +
+        `🔴 Pengeluaran: <code>-${formatRupiah(exp)}</code>\n` +
+        `━━━━━━━━━━━━━━━━━\n` +
+        `💰 Saldo Bersih: <code>${formatRupiah(net)}</code>\n\n` +
+        `👤 Akun: <b>${currentUser.username}</b>`,
         {
           inline_keyboard: [
             [
@@ -871,14 +894,15 @@ export async function POST(request: Request) {
       const spentMap: Record<string, number> = {};
       for (const r of spentRows) spentMap[r.kategori] = Number(r.total_spent || 0);
 
-      let msg = `🎯 <b>Status Anggaran Bulan Ini (${currentMonth}/${currentYear}):</b>\n\n`;
+      let msg = `🎯 <b>Status Anggaran Bulan Ini (${currentMonth}/${currentYear})</b>\n━━━━━━━━━━━━━━━━━\n`;
       for (const b of budgets) {
         const limit = Number(b.nominal_limit);
         const spent = spentMap[b.kategori] || 0;
         const pct = limit > 0 ? Math.round((spent / limit) * 100) : 0;
         const icon = pct > 100 ? "🚨" : pct >= 80 ? "⚠️" : "✅";
-        msg += `${icon} <b>${b.kategori}</b>: ${formatRupiah(spent)} / ${formatRupiah(limit)} (${pct}%)\n`;
+        msg += `${icon} <b>${b.kategori}</b>: <code>${formatRupiah(spent)}</code> / <code>${formatRupiah(limit)}</code> (${pct}%)\n`;
       }
+      msg += `━━━━━━━━━━━━━━━━━\n<i>Atur batas kategori di Web Dashboard.</i>`;
 
       await sendTelegramMessage(chatId, msg);
       return NextResponse.json({ ok: true });
@@ -903,16 +927,17 @@ export async function POST(request: Request) {
       `;
 
       if (bills.length === 0) {
-        await sendTelegramMessage(chatId, `🧾 <b>Tagihan Rutin:</b>\n\nTidak ada tagihan aktif terdaftar.`);
+        await sendTelegramMessage(chatId, `🧾 <b>Tagihan Rutin</b>\n━━━━━━━━━━━━━━━━━\nTidak ada tagihan aktif terdaftar.`);
         return NextResponse.json({ ok: true });
       }
 
-      let msg = `🧾 <b>Pengingat Tagihan & Transaksi Rutin:</b>\n\n`;
+      let msg = `🧾 <b>Pengingat Tagihan & Transaksi Rutin</b>\n━━━━━━━━━━━━━━━━━\n`;
       for (const b of bills) {
         const days = Number(b.days_left);
-        const dueStr = days < 0 ? `⚠️ Terlewat ${Math.abs(days)} hari` : days === 0 ? `🚨 JATUH TEMPO HARI INI` : `⏳ ${days} hari lagi`;
-        msg += `• <b>${b.deskripsi}</b> (${formatRupiah(Number(b.jumlah))})\n  Jatuh tempo: ${b.due_date} [${dueStr}]\n\n`;
+        const dueStr = days < 0 ? `⚠️ Lewat ${Math.abs(days)} hari` : days === 0 ? `🚨 JATUH TEMPO HARI INI` : `⏳ ${days} hari lagi`;
+        msg += `• <b>${b.deskripsi}</b> — <code>${formatRupiah(Number(b.jumlah))}</code>\n  Jatuh tempo: <i>${b.due_date}</i> [${dueStr}]\n\n`;
       }
+      msg += `━━━━━━━━━━━━━━━━━\n<i>Sinkronisasi real-time via Web Dashboard</i>`;
 
       await sendTelegramMessage(chatId, msg);
       return NextResponse.json({ ok: true });
@@ -952,13 +977,14 @@ export async function POST(request: Request) {
         return NextResponse.json({ ok: true });
       }
 
-      let textMsg = `📋 <b>5 Transaksi Terakhir (Hal 1/${totalPages}):</b>\n\n`;
+      let textMsg = `📋 <b>5 Transaksi Terakhir (Hal 1/${totalPages})</b>\n━━━━━━━━━━━━━━━━━\n`;
       txList.forEach((tx: any, idx: number) => {
         const icon = tx.tipe === "income" ? "🟢" : "🔴";
         const sign = tx.tipe === "income" ? "+" : "-";
-        textMsg += `${idx + 1}. ${icon} <b>${sign}${formatRupiah(Number(tx.jumlah))}</b>\n`;
-        textMsg += `    📝 ${tx.deskripsi} <i>(${tx.tanggal_str})</i>\n`;
+        textMsg += `${idx + 1}. ${icon} <code>${sign}${formatRupiah(Number(tx.jumlah))}</code>\n`;
+        textMsg += `   📝 ${tx.deskripsi} • <i>${tx.tanggal_str}</i>\n\n`;
       });
+      textMsg += `━━━━━━━━━━━━━━━━━\n<i>Total transaksi Anda: ${totalTx} catatan</i>`;
 
       const navRow = [];
       if (totalPages > 1) {
@@ -1008,13 +1034,16 @@ export async function POST(request: Request) {
 
       await sendTelegramMessage(
         chatId,
-        `⚡ <b>Status Sistem ZailTrack (v2.2)</b>\n\n` +
-        `• <b>Server Web:</b> 🟢 Online (App Router Turbopack)\n` +
-        `• <b>Database:</b> Neon Serverless PostgreSQL\n` +
-        `• <b>Latensi Query:</b> ${latency} ms\n` +
-        `• <b>Transaksi Terakhir:</b> ${lastTxInfo}\n` +
-        `• <b>Hak Akses Anda:</b> ${userRole.toUpperCase()}\n` +
-        `• <b>Waktu Pengecekan:</b> ${new Date().toLocaleTimeString("id-ID")} WIB`,
+        `⚡ <b>Status Sistem & Telemetri</b>\n` +
+        `━━━━━━━━━━━━━━━━━\n` +
+        `• Engine Web: 🟢 <b>Online</b> (Next.js 16)\n` +
+        `• Database: <b>PostgreSQL Serverless</b>\n` +
+        `• Latensi DB: <code>${latency} ms</code>\n` +
+        `• Transaksi Terakhir: ${lastTxInfo}\n` +
+        `• Role Akun: <b>${userRole.toUpperCase()}</b>\n` +
+        `• Waktu Cek: ${new Date().toLocaleTimeString("id-ID")} WIB\n` +
+        `━━━━━━━━━━━━━━━━━\n` +
+        `<i>Sistem beroperasi optimal tanpa kendala.</i>`,
         {
           inline_keyboard: [
             [{ text: "🔄 Refresh Status", callback_data: "cmd:status" }],
@@ -1056,14 +1085,16 @@ export async function POST(request: Request) {
 
       await sendTelegramMessage(
         chatId,
-        `👤 <b>Informasi Akun ZailTrack</b>\n\n` +
-        `• <b>User ID:</b> #${currentUser.id}\n` +
-        `• <b>Username:</b> <code>${currentUser.username}</code>\n` +
-        `• <b>Hak Akses (Role):</b> <b>${roleDisplay}</b>\n` +
-        `• <b>Status:</b> ${currentUser.status === "active" ? "🟢 Aktif" : "🔴 " + currentUser.status}\n` +
-        `• <b>Telegram Chat ID:</b> <code>${chatId}</code>\n` +
-        `• <b>Terdaftar Sejak:</b> ${joinedDate}\n` +
-        `• <b>Enkripsi Password:</b> Bcrypt Salt 10 Hash (Anti-Bruteforce)`,
+        `👤 <b>Profil Akun ZailTrack</b>\n` +
+        `━━━━━━━━━━━━━━━━━\n` +
+        `• ID Akun: <code>#${currentUser.id}</code>\n` +
+        `• Username: <b>${currentUser.username}</b>\n` +
+        `• Hak Akses: <b>${roleDisplay}</b>\n` +
+        `• Status: ${currentUser.status === "active" ? "🟢 Aktif" : "🔴 " + currentUser.status}\n` +
+        `• Chat ID: <code>${chatId}</code>\n` +
+        `• Terdaftar: ${joinedDate}\n` +
+        `━━━━━━━━━━━━━━━━━\n` +
+        `🔒 <i>Bcrypt Salt 10 • Keamanan Terverifikasi</i>`,
         {
           inline_keyboard: [
             [
@@ -1118,16 +1149,17 @@ export async function POST(request: Request) {
 
       await sendTelegramMessage(
         chatId,
-        `👑 <b>Admin Platform Summary</b>\n\n` +
+        `👑 <b>Executive Platform Summary</b>\n` +
+        `━━━━━━━━━━━━━━━━━\n` +
         `👥 <b>Statistik Pengguna:</b>\n` +
-        `• Total Pengguna: <b>${uStat.total}</b> akun\n` +
-        `• Admin: <b>${uStat.admins}</b> | Dev: <b>${uStat.developers}</b>\n` +
-        `• Akun Aktif: <b>${uStat.active_count}</b>\n\n` +
-        `📊 <b>Ledger Global:</b>\n` +
-        `• Total Catatan Transaksi: <b>${tStat.total_tx}</b>\n` +
-        `• Pemasukan Platform: ${formatRupiah(Number(cStat.total_in))}\n` +
-        `• Pengeluaran Platform: ${formatRupiah(Number(cStat.total_out))}\n\n` +
-        `🌐 Akses database langsung dan manajemen user tersedia di Admin Web Dashboard.`,
+        `• Total Akun: <b>${uStat.total}</b> (🟢 ${uStat.active_count} aktif)\n` +
+        `• Staff: ${uStat.admins} Admin • ${uStat.developers} Dev\n\n` +
+        `📊 <b>Platform Cashflow:</b>\n` +
+        `• Total Transaksi: <b>${tStat.total_tx}</b> catatan\n` +
+        `• Pemasukan: <code>${formatRupiah(Number(cStat.total_in))}</code>\n` +
+        `• Pengeluaran: <code>${formatRupiah(Number(cStat.total_out))}</code>\n` +
+        `━━━━━━━━━━━━━━━━━\n` +
+        `🌐 <i>Buka Admin Cockpit web untuk kontrol penuh.</i>`,
         {
           inline_keyboard: [
             [
@@ -1170,13 +1202,14 @@ export async function POST(request: Request) {
     if (!parsed) {
       await sendTelegramMessage(
         chatId,
-        `🤔 <i>Pesan tidak dikenali sebagai format transaksi atau perintah.</i>\n\n` +
-        `<b>Contoh format yang didukung:</b>\n` +
+        `🤔 <b>Format Belum Dikenali</b>\n` +
+        `━━━━━━━━━━━━━━━━━\n` +
+        `Ketik transaksi dengan format praktis:\n\n` +
         `• <code>keluar 25000 kopi</code>\n` +
-        `• <code>masuk 500000 bonus</code>\n` +
         `• <code>beli bensin 35k</code>\n` +
+        `• <code>masuk 500rb freelance</code>\n` +
         `• <code>-15rb parkir</code> / <code>+1.5jt gaji</code>\n\n` +
-        `Ketik /help untuk panduan lengkap.`,
+        `Ketik /help atau gunakan menu di bawah:`,
         buildMainMenuKeyboard(userRole)
       );
 
@@ -1197,6 +1230,7 @@ export async function POST(request: Request) {
     const nowWIB = new Date(Date.now() + 7 * 60 * 60 * 1000);
     const tanggalHariIni = nowWIB.toISOString().slice(0, 10);
     const tanggalDisplay = tanggalHariIni.split("-").reverse().join("/");
+    const jamDisplay = nowWIB.toTimeString().slice(0, 5);
 
     await sql`
       INSERT INTO transactions (user_id, tipe, jumlah, kategori, deskripsi, tanggal)
@@ -1204,22 +1238,23 @@ export async function POST(request: Request) {
     `;
 
     const icon = parsed.tipe === "income" ? "🟢" : "🔴";
-    const tipeLabel = parsed.tipe === "income" ? "PEMASUKAN (+)" : "PENGELUARAN (-)";
+    const sign = parsed.tipe === "income" ? "+" : "-";
 
     await sendTelegramMessage(
       chatId,
-      `✅ <b>Transaksi Berhasil Dicatat!</b>\n\n` +
-      `${icon} <b>Tipe:</b> ${tipeLabel}\n` +
-      `💰 <b>Nominal:</b> <b>${formatRupiah(parsed.jumlah)}</b>\n` +
-      `📁 <b>Kategori:</b> <b>${parsed.kategori}</b>\n` +
-      `📝 <b>Keterangan:</b> ${parsed.deskripsi}\n` +
-      `📅 <b>Tanggal:</b> ${tanggalDisplay}\n` +
-      `👤 <b>Akun:</b> @${currentUser.username}\n\n` +
-      `🌐 <i>Tersinkronisasi otomatis ke Web Ledger & Sheets!</i>`,
+      `✅ <b>Transaksi Berhasil Dicatat</b>\n` +
+      `━━━━━━━━━━━━━━━━━\n` +
+      `${icon} <b>${parsed.tipe === "income" ? "Pemasukan" : "Pengeluaran"}:</b> <code>${sign}${formatRupiah(parsed.jumlah)}</code>\n` +
+      `🏷 <b>Kategori:</b> ${parsed.kategori}\n` +
+      `📝 <b>Catatan:</b> ${parsed.deskripsi}\n` +
+      `📅 <b>Waktu:</b> ${tanggalDisplay} • ${jamDisplay} WIB\n` +
+      `━━━━━━━━━━━━━━━━━\n` +
+      `👤 <b>Akun:</b> <code>${currentUser.username}</code>\n\n` +
+      `<i>Tersinkron otomatis ke Web Dashboard</i>`,
       {
         inline_keyboard: [
           [
-            { text: "💰 Cek Saldo Baru", callback_data: "cmd:saldo" },
+            { text: "💰 Cek Saldo", callback_data: "cmd:saldo" },
             { text: "📋 Riwayat", callback_data: "history:1" },
           ],
           [
