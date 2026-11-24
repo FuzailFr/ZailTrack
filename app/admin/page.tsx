@@ -188,13 +188,16 @@ export default function AdminDashboardPage() {
     }
   }, [activeTab, analyticsRange, sessionUser]);
 
-  // Kunci scroll halaman latar belakang (body) saat modal terbuka agar tidak terjadi scroll bocor / aneh
+  // Kunci scroll halaman latar belakang (body & html) saat modal terbuka
   useEffect(() => {
     if (waExpandedModal) {
-      const prevOverflow = document.body.style.overflow;
+      const prevBodyOverflow = document.body.style.overflow;
+      const prevHtmlOverflow = document.documentElement.style.overflow;
       document.body.style.overflow = "hidden";
+      document.documentElement.style.overflow = "hidden";
       return () => {
-        document.body.style.overflow = prevOverflow || "";
+        document.body.style.overflow = prevBodyOverflow;
+        document.documentElement.style.overflow = prevHtmlOverflow;
       };
     }
   }, [waExpandedModal]);
@@ -1401,179 +1404,6 @@ export default function AdminDashboardPage() {
                 );
               })()}
             </div>
-
-            {/* Modal: Lihat Full & Scrollable View for Web Analytics Breakdown */}
-            {waExpandedModal && (() => {
-              let modalTitle = "";
-              let modalSubtitle = "";
-              let modalItems: Array<{ name: string; flag?: string; percentage: number; count?: number; code?: string }> = [];
-
-              if (waExpandedModal === "countries") {
-                modalTitle = "Daftar Lengkap Negara Pengunjung";
-                modalSubtitle = "Distribusi geolokasi dan asal pengunjung platform ZailTrack berdasarkan IP & Vercel Telemetry";
-                modalItems = analyticsData?.webAnalytics?.countries || [];
-              } else if (waExpandedModal === "devices") {
-                modalTitle = "Daftar Lengkap Perangkat (Devices)";
-                modalSubtitle = "Breakdown kategori perangkat yang digunakan pengunjung saat mengakses web platform";
-                modalItems = analyticsData?.webAnalytics?.devices || [];
-              } else if (waExpandedModal === "browsers") {
-                modalTitle = "Daftar Lengkap Peramban (Browsers)";
-                modalSubtitle = "Breakdown jenis aplikasi web browser yang digunakan pengunjung platform";
-                modalItems = analyticsData?.webAnalytics?.browsers || [];
-              } else if (waExpandedModal === "os") {
-                modalTitle = "Daftar Lengkap Sistem Operasi (OS)";
-                modalSubtitle = "Breakdown sistem operasi perangkat yang mengakses platform ZailTrack";
-                modalItems = analyticsData?.webAnalytics?.operatingSystems || [];
-              }
-
-              const filteredItems = modalItems.filter((item) =>
-                item.name.toLowerCase().includes(waModalSearch.toLowerCase()) ||
-                (item.code && item.code.toLowerCase().includes(waModalSearch.toLowerCase()))
-              );
-
-              return (
-                <div
-                  onClick={() => setWaExpandedModal(null)}
-                  className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs animate-in fade-in overscroll-contain"
-                >
-                  <div
-                    onClick={(e) => e.stopPropagation()}
-                    className="technical-card w-full max-w-xl max-h-[85vh] rounded-2xl flex flex-col relative border border-[var(--border)] shadow-2xl overflow-hidden overscroll-contain my-auto"
-                  >
-                    {/* Header */}
-                    <div className="p-5 border-b border-[var(--border)] relative bg-[var(--surface-dark,#0f1115)]">
-                      <button
-                        onClick={() => setWaExpandedModal(null)}
-                        className="absolute top-5 right-5 p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--surface)] transition-colors cursor-pointer"
-                        title="Tutup Modal"
-                      >
-                        <X size={18} />
-                      </button>
-                      <div className="flex items-center gap-2">
-                        <span className="w-2.5 h-2.5 rounded-full bg-blue-500 animate-pulse" />
-                        <h3 className="text-base font-bold text-[var(--text-primary)]">{modalTitle}</h3>
-                      </div>
-                      <p className="text-xs text-[var(--text-secondary)] font-mono mt-1 pr-8">
-                        {modalSubtitle}
-                      </p>
-
-                      {/* Search bar inside modal */}
-                      <div className="mt-4 flex items-center gap-3">
-                        <div className="relative flex-1">
-                          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
-                          <input
-                            type="text"
-                            value={waModalSearch}
-                            onChange={(e) => setWaModalSearch(e.target.value)}
-                            placeholder="Cari item dalam daftar..."
-                            className="technical-input w-full pl-9 pr-3 py-1.5 rounded-lg text-xs font-mono"
-                          />
-                        </div>
-                        <div className="text-[11px] font-mono text-[var(--text-muted)] shrink-0 px-2.5 py-1.5 rounded-md bg-[var(--surface)] border border-[var(--border)]">
-                          {filteredItems.length} dari {modalItems.length} entri
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Scrollable list with custom scrollbar & overscroll containment */}
-                    <div className="flex-1 overflow-y-auto p-4 space-y-2.5 select-none custom-scrollbar overscroll-contain max-h-[60vh]">
-                      {filteredItems.length === 0 ? (
-                        <div className="py-12 text-center text-xs font-mono text-[var(--text-muted)]">
-                          Tidak ada data yang cocok dengan &quot;{waModalSearch}&quot;
-                        </div>
-                      ) : (
-                        filteredItems.map((item, index) => (
-                          <div
-                            key={item.name + index}
-                            className="relative rounded-lg overflow-hidden bg-[var(--surface)] border border-[var(--border)] hover:border-blue-500/40 text-xs font-mono p-3 transition-colors"
-                          >
-                            {/* Background progress bar */}
-                            <div
-                              className="absolute inset-y-0 left-0 bg-blue-500/10 border-r-2 border-blue-500/40"
-                              style={{ width: `${Math.max(item.percentage, 2)}%` }}
-                            />
-                            <div className="relative flex items-center justify-between gap-4">
-                              <div className="flex items-center gap-3 min-w-0 flex-1">
-                                <span className={`w-6 h-6 shrink-0 rounded flex items-center justify-center font-bold text-[10px] ${
-                                  index === 0
-                                    ? "bg-amber-500/20 text-amber-300 border border-amber-500/40"
-                                    : index === 1
-                                    ? "bg-zinc-400/20 text-zinc-300 border border-zinc-400/40"
-                                    : index === 2
-                                    ? "bg-amber-700/20 text-amber-500 border border-amber-700/40"
-                                    : "bg-[var(--surface-dark,#16191f)] text-[var(--text-muted)] border border-[var(--border)]"
-                                }`}>
-                                  #{index + 1}
-                                </span>
-                                {(() => {
-                                  const code = getCountryCode(item);
-                                  if (code && waExpandedModal === "countries") {
-                                    return (
-                                      <img
-                                        src={`https://flagcdn.com/28x21/${code}.png`}
-                                        srcSet={`https://flagcdn.com/56x42/${code}.png 2x`}
-                                        width="28"
-                                        height="21"
-                                        alt={item.name}
-                                        className="w-6 h-4.5 rounded-2xs object-cover shrink-0 border border-white/10 shadow-2xs"
-                                        loading="lazy"
-                                        onError={(e) => {
-                                          (e.currentTarget as HTMLElement).style.display = "none";
-                                        }}
-                                      />
-                                    );
-                                  }
-                                  if (item.flag) {
-                                    return <span className="text-base shrink-0">{item.flag}</span>;
-                                  }
-                                  return null;
-                                })()}
-                                <div className="min-w-0 flex-1">
-                                  <div className="font-semibold text-[var(--text-primary)] truncate flex items-center gap-2">
-                                    <span>{item.name}</span>
-                                    {item.code && (
-                                      <span className="text-[10px] px-1.5 py-0.2 rounded bg-[var(--surface-dark,#16191f)] border border-[var(--border)] text-[var(--text-muted)] font-mono">
-                                        {item.code}
-                                      </span>
-                                    )}
-                                  </div>
-                                </div>
-                              </div>
-
-                              <div className="flex items-center gap-4 shrink-0 text-right">
-                                {typeof item.count === "number" && item.count > 0 && (
-                                  <span className="text-[11px] text-[var(--text-muted)] hidden sm:inline">
-                                    {item.count.toLocaleString()} visits
-                                  </span>
-                                )}
-                                <span className="font-bold text-sm text-blue-400 min-w-[44px] text-right">
-                                  {item.percentage}%
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                        ))
-                      )}
-                    </div>
-
-                    {/* Footer */}
-                    <div className="p-3.5 border-t border-[var(--border)] bg-[var(--surface-dark,#0f1115)] flex items-center justify-between text-xs font-mono">
-                      <span className="text-[11px] text-[var(--text-muted)]">
-                        Total {filteredItems.length} entri terdata
-                        {filteredItems.length > 4 ? " • Gulir untuk melihat semua" : ""}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => setWaExpandedModal(null)}
-                        className="px-4 py-1.5 rounded-lg bg-[var(--surface)] hover:bg-[var(--surface-hover)] border border-[var(--border)] text-[var(--text-primary)] font-semibold transition-colors cursor-pointer"
-                      >
-                        Tutup
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              );
-            })()}
 
             {/* Visual Analytics Chart: 14-Day Platform Cashflow Activity */}
             <div className="technical-card rounded-2xl p-5 space-y-4">
@@ -3341,6 +3171,181 @@ export default function AdminDashboardPage() {
           </div>
         </div>
       )}
+
+      {/* ============================================================== */}
+      {/* MODAL 8: WEB ANALYTICS BREAKDOWN (COUNTRIES, DEVICES, OS)      */}
+      {/* ============================================================== */}
+      {waExpandedModal && (() => {
+        let modalTitle = "";
+        let modalSubtitle = "";
+        let modalItems: Array<{ name: string; flag?: string; percentage: number; count?: number; code?: string }> = [];
+
+        if (waExpandedModal === "countries") {
+          modalTitle = "Daftar Lengkap Negara Pengunjung";
+          modalSubtitle = "Distribusi geolokasi dan asal pengunjung platform ZailTrack berdasarkan IP & Vercel Telemetry";
+          modalItems = analyticsData?.webAnalytics?.countries || [];
+        } else if (waExpandedModal === "devices") {
+          modalTitle = "Daftar Lengkap Perangkat (Devices)";
+          modalSubtitle = "Breakdown kategori perangkat yang digunakan pengunjung saat mengakses web platform";
+          modalItems = analyticsData?.webAnalytics?.devices || [];
+        } else if (waExpandedModal === "browsers") {
+          modalTitle = "Daftar Lengkap Peramban (Browsers)";
+          modalSubtitle = "Breakdown jenis aplikasi web browser yang digunakan pengunjung platform";
+          modalItems = analyticsData?.webAnalytics?.browsers || [];
+        } else if (waExpandedModal === "os") {
+          modalTitle = "Daftar Lengkap Sistem Operasi (OS)";
+          modalSubtitle = "Breakdown sistem operasi perangkat yang mengakses platform ZailTrack";
+          modalItems = analyticsData?.webAnalytics?.operatingSystems || [];
+        }
+
+        const filteredItems = modalItems.filter((item) =>
+          item.name.toLowerCase().includes(waModalSearch.toLowerCase()) ||
+          (item.code && item.code.toLowerCase().includes(waModalSearch.toLowerCase()))
+        );
+
+        return (
+          <div
+            onClick={() => setWaExpandedModal(null)}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/80 backdrop-blur-sm overscroll-contain"
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              className="technical-card w-full max-w-xl max-h-[85vh] rounded-2xl flex flex-col relative border border-[var(--border)] shadow-2xl overflow-hidden overscroll-contain"
+            >
+              {/* Header */}
+              <div className="p-5 border-b border-[var(--border)] relative bg-[var(--surface-dark,#0f1115)]">
+                <button
+                  onClick={() => setWaExpandedModal(null)}
+                  className="absolute top-5 right-5 p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--surface)] transition-colors cursor-pointer"
+                  title="Tutup Modal"
+                >
+                  <X size={18} />
+                </button>
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-blue-500 animate-pulse" />
+                  <h3 className="text-base font-bold text-[var(--text-primary)]">{modalTitle}</h3>
+                </div>
+                <p className="text-xs text-[var(--text-secondary)] font-mono mt-1 pr-8">
+                  {modalSubtitle}
+                </p>
+
+                {/* Search bar inside modal */}
+                <div className="mt-4 flex items-center gap-3">
+                  <div className="relative flex-1">
+                    <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
+                    <input
+                      type="text"
+                      value={waModalSearch}
+                      onChange={(e) => setWaModalSearch(e.target.value)}
+                      placeholder="Cari item dalam daftar..."
+                      className="technical-input w-full pl-9 pr-3 py-1.5 rounded-lg text-xs font-mono"
+                    />
+                  </div>
+                  <div className="text-[11px] font-mono text-[var(--text-muted)] shrink-0 px-2.5 py-1.5 rounded-md bg-[var(--surface)] border border-[var(--border)]">
+                    {filteredItems.length} dari {modalItems.length} entri
+                  </div>
+                </div>
+              </div>
+
+              {/* Scrollable list with custom scrollbar & overscroll containment */}
+              <div className="flex-1 overflow-y-auto p-4 space-y-2.5 select-none custom-scrollbar overscroll-contain max-h-[55vh]">
+                {filteredItems.length === 0 ? (
+                  <div className="py-12 text-center text-xs font-mono text-[var(--text-muted)]">
+                    Tidak ada data yang cocok dengan &quot;{waModalSearch}&quot;
+                  </div>
+                ) : (
+                  filteredItems.map((item, index) => (
+                    <div
+                      key={item.name + index}
+                      className="relative rounded-lg overflow-hidden bg-[var(--surface)] border border-[var(--border)] hover:border-blue-500/40 text-xs font-mono p-3 transition-colors"
+                    >
+                      {/* Background progress bar */}
+                      <div
+                        className="absolute inset-y-0 left-0 bg-blue-500/10 border-r-2 border-blue-500/40"
+                        style={{ width: `${Math.max(item.percentage, 2)}%` }}
+                      />
+                      <div className="relative flex items-center justify-between gap-4">
+                        <div className="flex items-center gap-3 min-w-0 flex-1">
+                          <span className={`w-6 h-6 shrink-0 rounded flex items-center justify-center font-bold text-[10px] ${
+                            index === 0
+                              ? "bg-amber-500/20 text-amber-300 border border-amber-500/40"
+                              : index === 1
+                              ? "bg-zinc-400/20 text-zinc-300 border border-zinc-400/40"
+                              : index === 2
+                              ? "bg-amber-700/20 text-amber-500 border border-amber-700/40"
+                              : "bg-[var(--surface-dark,#16191f)] text-[var(--text-muted)] border border-[var(--border)]"
+                          }`}>
+                            #{index + 1}
+                          </span>
+                          {(() => {
+                            const code = getCountryCode(item);
+                            if (code && waExpandedModal === "countries") {
+                              return (
+                                <img
+                                  src={`https://flagcdn.com/28x21/${code}.png`}
+                                  srcSet={`https://flagcdn.com/56x42/${code}.png 2x`}
+                                  width="28"
+                                  height="21"
+                                  alt={item.name}
+                                  className="w-6 h-4.5 rounded-2xs object-cover shrink-0 border border-white/10 shadow-2xs"
+                                  loading="lazy"
+                                  onError={(e) => {
+                                    (e.currentTarget as HTMLElement).style.display = "none";
+                                  }}
+                                />
+                              );
+                            }
+                            if (item.flag) {
+                              return <span className="text-base shrink-0">{item.flag}</span>;
+                            }
+                            return null;
+                          })()}
+                          <div className="min-w-0 flex-1">
+                            <div className="font-semibold text-[var(--text-primary)] truncate flex items-center gap-2">
+                              <span>{item.name}</span>
+                              {item.code && (
+                                <span className="text-[10px] px-1.5 py-0.2 rounded bg-[var(--surface-dark,#16191f)] border border-[var(--border)] text-[var(--text-muted)] font-mono">
+                                  {item.code}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-4 shrink-0 text-right">
+                          {typeof item.count === "number" && item.count > 0 && (
+                            <span className="text-[11px] text-[var(--text-muted)] hidden sm:inline">
+                              {item.count.toLocaleString()} kunjungan
+                            </span>
+                          )}
+                          <span className="font-bold text-sm text-blue-400 min-w-[44px] text-right">
+                            {item.percentage}%
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              {/* Footer */}
+              <div className="p-3.5 border-t border-[var(--border)] bg-[var(--surface-dark,#0f1115)] flex items-center justify-between text-xs font-mono">
+                <span className="text-[11px] text-[var(--text-muted)]">
+                  Total {filteredItems.length} entri terdata
+                  {filteredItems.length > 4 ? " • Gulir untuk melihat semua" : ""}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setWaExpandedModal(null)}
+                  className="px-4 py-1.5 rounded-lg bg-[var(--surface)] hover:bg-[var(--surface-hover)] border border-[var(--border)] text-[var(--text-primary)] font-semibold transition-colors cursor-pointer"
+                >
+                  Tutup
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }

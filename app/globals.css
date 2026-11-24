@@ -168,18 +168,15 @@ button:focus-visible {
 @keyframes pageFadeIn {
   from {
     opacity: 0;
-    transform: translateY(8px);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
   }
 }
 
 .page-transition,
-main,
 [role="tabpanel"] {
-  animation: pageFadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: pageFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 /* Modal Backdrop & Content Physics */
