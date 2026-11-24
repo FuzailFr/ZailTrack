@@ -75,6 +75,20 @@ export async function middleware(request: NextRequest) {
     }
   }
 
+  // Deteksi Social Media & Search Engine Crawlers (WhatsApp, Telegram, Facebook, Twitter, dll)
+  // Biarkan crawler mendapatkan HTML SSR lengkap dengan Open Graph meta tags tanpa redirect
+  const userAgent = request.headers.get("user-agent") || "";
+  const isSocialCrawler =
+    /facebookexternalhit|whatsapp|telegrambot|twitterbot|slackbot|linkedinbot|discordbot|bingbot|googlebot/i.test(
+      userAgent
+    );
+
+  if (isSocialCrawler && !pathname.startsWith("/api/")) {
+    const response = NextResponse.next();
+    response.headers.set("X-Robots-Tag", "index, follow, max-image-preview:large");
+    return response;
+  }
+
   // 2. Proteksi Akses Halaman Dashboard (/dashboard)
   if (pathname.startsWith("/dashboard")) {
     const session = await verifySessionToken(token);

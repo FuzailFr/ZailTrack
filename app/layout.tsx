@@ -27,6 +27,7 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://zail-track.vercel.app"),
   title: "ZailTrack — High-Density Financial Ledger",
   description:
     "A clean, secure, and modern financial management ledger with zero generic slop. Real-time cashflow tracking, monthly analytics, and technical reporting.",
@@ -35,6 +36,32 @@ export const metadata: Metadata = {
   icons: {
     icon: "/icon.svg",
     apple: "/icon.svg",
+  },
+  openGraph: {
+    title: "ZailTrack — High-Density Financial Ledger",
+    description:
+      "Aplikasi pembukuan keuangan modern, aman, dan real-time dengan enkripsi zero-trust dan integrasi bot Telegram.",
+    url: "https://zail-track.vercel.app",
+    siteName: "ZailTrack",
+    locale: "id_ID",
+    type: "website",
+    images: [
+      {
+        url: "https://zail-track.vercel.app/og-preview.png",
+        width: 1200,
+        height: 630,
+        alt: "ZailTrack — Modern High-Density Financial Ledger",
+        type: "image/png",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "ZailTrack — High-Density Financial Ledger",
+    description:
+      "Aplikasi pembukuan keuangan modern, aman, dan real-time dengan enkripsi zero-trust.",
+    images: ["https://zail-track.vercel.app/og-preview.png"],
+    creator: "@fuzail_dev",
   },
 };
 
@@ -62,6 +89,24 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <head>
+        <meta property="og:title" content="ZailTrack — High-Density Financial Ledger" />
+        <meta
+          property="og:description"
+          content="Aplikasi pembukuan keuangan modern, aman, dan real-time dengan enkripsi zero-trust."
+        />
+        <meta property="og:image" content="https://zail-track.vercel.app/og-preview.png" />
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image:height" content="630" />
+        <meta property="og:image:type" content="image/png" />
+        <meta property="og:url" content="https://zail-track.vercel.app" />
+        <meta property="og:type" content="website" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="ZailTrack — High-Density Financial Ledger" />
+        <meta
+          name="twitter:description"
+          content="Aplikasi pembukuan keuangan modern, aman, dan real-time dengan enkripsi zero-trust."
+        />
+        <meta name="twitter:image" content="https://zail-track.vercel.app/og-preview.png" />
         <Script
           id="theme-initializer"
           strategy="beforeInteractive"
