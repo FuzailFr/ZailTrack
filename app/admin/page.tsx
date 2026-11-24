@@ -132,36 +132,58 @@ export default function AdminDashboardPage() {
   const [analyticsRange, setAnalyticsRange] = useState("30d");
   const [analyticsData, setAnalyticsData] = useState<any>(null);
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
-  const [waActiveMetric, setWaActiveMetric] = useState<"visitors" | "pageViews" | "bounceRate">("visitors");
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [waActiveMetric, setWaActiveMetric] = useState<"visitors" | "pageViews">("visitors");
   const [waSubTabDevice, setWaSubTabDevice] = useState<"devices" | "browsers">("devices");
   const [waHoveredPoint, setWaHoveredPoint] = useState<number | null>(null);
   const [waExpandedModal, setWaExpandedModal] = useState<"countries" | "devices" | "browsers" | "os" | null>(null);
   const [waModalSearch, setWaModalSearch] = useState("");
 
-  const fetchAnalytics = async () => {
-    setAnalyticsLoading(true);
+  const getCountryCode = (item: any) => {
+    if (item?.code && String(item.code).length === 2 && item.code !== "LOCAL") {
+      return String(item.code).toLowerCase();
+    }
+    const lower = String(item?.name || "").toLowerCase();
+    if (lower.includes("indonesia")) return "id";
+    if (lower.includes("united states") || lower.includes("usa") || lower === "us") return "us";
+    if (lower.includes("singapore")) return "sg";
+    if (lower.includes("malaysia")) return "my";
+    if (lower.includes("united kingdom") || lower.includes("britain")) return "gb";
+    if (lower.includes("germany")) return "de";
+    if (lower.includes("japan")) return "jp";
+    if (lower.includes("canada")) return "ca";
+    if (lower.includes("australia")) return "au";
+    return null;
+  };
+
+  const fetchAnalytics = async (silent = false) => {
+    if (!silent) setAnalyticsLoading(true);
+    else setIsSyncing(true);
     try {
       const res = await fetch(`/api/admin/analytics?range=${analyticsRange}`);
       const data = await res.json();
       if (res.ok) {
         setAnalyticsData(data.overview);
-      } else {
+      } else if (!silent) {
         showToast(data.message || "Gagal memuat analitik.", "error");
       }
     } catch (err: any) {
-      showToast(err.message, "error");
+      if (!silent) showToast(err.message, "error");
     } finally {
-      setAnalyticsLoading(false);
+      if (!silent) setAnalyticsLoading(false);
+      else setIsSyncing(false);
     }
   };
 
   useEffect(() => {
     if (activeTab === "overview" && sessionUser) {
       fetchAnalytics();
-      // Polling realtime setiap 15 detik agar analitik live update otomatis
+      // Polling realtime setiap 6 detik saat tab aktif
       const timer = setInterval(() => {
-        fetchAnalytics();
-      }, 15000);
+        if (!document.hidden) {
+          fetchAnalytics(true);
+        }
+      }, 6000);
       return () => clearInterval(timer);
     }
   }, [activeTab, analyticsRange, sessionUser]);
@@ -573,6 +595,15 @@ export default function AdminDashboardPage() {
   useEffect(() => {
     if (activeTab === "logs" && sessionUser) {
       fetchLogs();
+      // Auto-poll logs setiap 8 detik jika berada di halaman 1 tanpa pencarian
+      if (logPage === 1 && !logSearch && !logRoleFilter) {
+        const timer = setInterval(() => {
+          if (!document.hidden) {
+            fetchLogs();
+          }
+        }, 8000);
+        return () => clearInterval(timer);
+      }
     }
   }, [activeTab, logSubTab, logPage, logRoleFilter, logSearch, sessionUser]);
 
@@ -798,13 +829,20 @@ export default function AdminDashboardPage() {
                     </button>
                   ))}
                 </div>
+                <div
+                  className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[var(--surface)] border border-[var(--border)] text-[10px] font-mono text-emerald-400"
+                  title="Sinkronisasi data real-time otomatis setiap 6 detik"
+                >
+                  <span className={`w-1.5 h-1.5 rounded-full bg-emerald-400 ${isSyncing ? "animate-ping" : "animate-pulse"}`} />
+                  <span>{isSyncing ? "Syncing..." : "Realtime (6s)"}</span>
+                </div>
                 <button
-                  onClick={fetchAnalytics}
+                  onClick={() => fetchAnalytics(false)}
                   disabled={analyticsLoading}
                   className="p-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
-                  title="Refresh Analitik"
+                  title="Segarkan Data Sekarang"
                 >
-                  <RefreshCw size={14} className={analyticsLoading ? "animate-spin text-amber-500" : ""} />
+                  <RefreshCw size={14} className={analyticsLoading || isSyncing ? "animate-spin text-amber-500" : ""} />
                 </button>
               </div>
             </div>
@@ -910,7 +948,7 @@ export default function AdminDashboardPage() {
                   </a>
                   <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-[10px] sm:text-[11px] font-mono text-emerald-400 font-semibold">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                    <span>{analyticsData?.webAnalytics?.liveOnline ?? 5} traffic live</span>
+                    <span>{analyticsData?.webAnalytics?.liveOnline ?? 0} traffic live</span>
                   </div>
                 </div>
 
@@ -925,8 +963,8 @@ export default function AdminDashboardPage() {
                 </div>
               </div>
 
-              {/* Metric Tabs: Visitors | Page Views | Bounce Rate */}
-              <div className="grid grid-cols-3 gap-0 border border-[var(--border)] rounded-xl overflow-hidden divide-x divide-[var(--border)]">
+              {/* Metric Tabs: Visitors | Page Views (Bounce Rate Removed) */}
+              <div className="grid grid-cols-2 gap-0 border border-[var(--border)] rounded-xl overflow-hidden divide-x divide-[var(--border)]">
                 {/* Tab 1: Visitors */}
                 <button
                   onClick={() => setWaActiveMetric("visitors")}
@@ -940,7 +978,7 @@ export default function AdminDashboardPage() {
                     Visitors
                   </div>
                   <div className="text-base sm:text-3xl font-bold font-mono text-[var(--text-primary)]">
-                    {analyticsData?.webAnalytics?.visitors ?? 257}
+                    {analyticsData?.webAnalytics?.visitors ?? 0}
                   </div>
                   {waActiveMetric === "visitors" && (
                     <div className="absolute bottom-0 inset-x-0 h-0.5 bg-blue-500" />
@@ -960,34 +998,9 @@ export default function AdminDashboardPage() {
                     Page Views
                   </div>
                   <div className="text-base sm:text-3xl font-bold font-mono text-[var(--text-primary)]">
-                    {new Intl.NumberFormat("id-ID").format(analyticsData?.webAnalytics?.pageViews ?? 43043)}
+                    {new Intl.NumberFormat("id-ID").format(analyticsData?.webAnalytics?.pageViews ?? 0)}
                   </div>
                   {waActiveMetric === "pageViews" && (
-                    <div className="absolute bottom-0 inset-x-0 h-0.5 bg-blue-500" />
-                  )}
-                </button>
-
-                {/* Tab 3: Bounce Rate */}
-                <button
-                  onClick={() => setWaActiveMetric("bounceRate")}
-                  className={`p-2.5 sm:p-4 text-left transition-all cursor-pointer relative ${
-                    waActiveMetric === "bounceRate"
-                      ? "bg-[var(--surface-hover)]"
-                      : "bg-[var(--surface)] hover:bg-[var(--surface-hover)]/50"
-                  }`}
-                >
-                  <div className="text-[10px] sm:text-xs font-mono text-[var(--text-muted)] uppercase tracking-wider mb-0.5 sm:mb-1 truncate">
-                    Bounce Rate
-                  </div>
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    <span className="text-base sm:text-3xl font-bold font-mono text-[var(--text-primary)]">
-                      {analyticsData?.webAnalytics?.bounceRate ?? 20}%
-                    </span>
-                    <span className="hidden sm:inline-block px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-rose-500/15 text-rose-400 border border-rose-500/30">
-                      {analyticsData?.webAnalytics?.bounceRateChange ?? "+20%"}
-                    </span>
-                  </div>
-                  {waActiveMetric === "bounceRate" && (
                     <div className="absolute bottom-0 inset-x-0 h-0.5 bg-blue-500" />
                   )}
                 </button>
@@ -1003,24 +1016,24 @@ export default function AdminDashboardPage() {
                       { label: "Nov 3", visitors: 0, pageViews: 0 },
                       { label: "Nov 4", visitors: 0, pageViews: 0 },
                       { label: "Nov 5", visitors: 0, pageViews: 0 },
-                      { label: "Nov 6", visitors: 140, pageViews: 42500 },
-                      { label: "Nov 7", visitors: 2, pageViews: 500 },
-                      { label: "Nov 8", visitors: 1, pageViews: 43 },
+                      { label: "Nov 6", visitors: 0, pageViews: 0 },
+                      { label: "Nov 7", visitors: 0, pageViews: 0 },
+                      { label: "Nov 8", visitors: 0, pageViews: 0 },
                     ];
 
                 const isVis = waActiveMetric === "visitors";
                 const isPv = waActiveMetric === "pageViews";
 
                 const rawMax = Math.max(
-                  ...trendList.map((t: any) => isVis ? Number(t.visitors || 0) : isPv ? Number(t.pageViews || 0) : 25),
-                  isVis ? 10 : isPv ? 1000 : 25
+                  ...trendList.map((t: any) => isVis ? Number(t.visitors || 0) : Number(t.pageViews || 0)),
+                  isVis ? 10 : 25
                 );
-                const maxVal = isVis ? Math.max(Math.ceil(rawMax / 10) * 10, 10) : isPv ? Math.max(Math.ceil(rawMax / 1000) * 1000, 100) : 100;
+                const maxVal = isVis ? Math.max(Math.ceil(rawMax / 5) * 5, 5) : Math.max(Math.ceil(rawMax / 10) * 10, 10);
 
                 const pointsCount = trendList.length;
                 const chartPoints = trendList.map((pt: any, idx: number) => {
                   const x = pointsCount > 1 ? 60 + (idx / (pointsCount - 1)) * 700 : 400;
-                  const val = isVis ? Number(pt.visitors || 0) : isPv ? Number(pt.pageViews || 0) : 20;
+                  const val = isVis ? Number(pt.visitors || 0) : Number(pt.pageViews || 0);
                   const y = 175 - Math.min(135, Math.max(0, Math.round((val / maxVal) * 135)));
                   return { ...pt, x, y, val };
                 });
@@ -1064,13 +1077,13 @@ export default function AdminDashboardPage() {
 
                       {/* Y-Axis Labels */}
                       <text x="25" y="44" fill="var(--text-muted)" fontSize="10" fontFamily="monospace" textAnchor="end">
-                        {waActiveMetric === "bounceRate" ? "100%" : formatYTick(maxVal)}
+                        {formatYTick(maxVal)}
                       </text>
                       <text x="25" y="89" fill="var(--text-muted)" fontSize="10" fontFamily="monospace" textAnchor="end">
-                        {waActiveMetric === "bounceRate" ? "66%" : formatYTick(maxVal * 0.66)}
+                        {formatYTick(maxVal * 0.66)}
                       </text>
                       <text x="25" y="134" fill="var(--text-muted)" fontSize="10" fontFamily="monospace" textAnchor="end">
-                        {waActiveMetric === "bounceRate" ? "33%" : formatYTick(maxVal * 0.33)}
+                        {formatYTick(maxVal * 0.33)}
                       </text>
                       <text x="25" y="178" fill="var(--text-muted)" fontSize="10" fontFamily="monospace" textAnchor="end">
                         0
@@ -1149,7 +1162,7 @@ export default function AdminDashboardPage() {
                                 fontWeight="bold"
                                 textAnchor="middle"
                               >
-                                {pt.label}: {pt.val.toLocaleString()} {waActiveMetric === "visitors" ? "vis" : waActiveMetric === "pageViews" ? "pv" : "%"}
+                                {pt.label}: {pt.val.toLocaleString()} {waActiveMetric === "visitors" ? "visitors" : "views"}
                               </text>
                             </g>
                           )}
@@ -1173,40 +1186,19 @@ export default function AdminDashboardPage() {
 
               {/* 3 Breakdown Cards: Countries | Devices & Browsers | Operating Systems */}
               {(() => {
-                const countriesList = analyticsData?.webAnalytics?.countries || [
-                  { name: "United States", flag: "🇺🇸", percentage: 46, count: 120, code: "US" },
-                  { name: "Indonesia", flag: "🇮🇩", percentage: 29, count: 75, code: "ID" },
-                  { name: "Singapore", flag: "🇸🇬", percentage: 10, count: 26, code: "SG" },
-                  { name: "United Kingdom", flag: "🇬🇧", percentage: 9, count: 23, code: "GB" },
-                  { name: "Germany", flag: "🇩🇪", percentage: 4, count: 10, code: "DE" },
-                ];
+                const countriesList = analyticsData?.webAnalytics?.countries || [];
 
-                const devicesList = analyticsData?.webAnalytics?.devices || [
-                  { name: "Desktop", percentage: 55, count: 143 },
-                  { name: "Mobile", percentage: 35, count: 91 },
-                  { name: "Tablet", percentage: 10, count: 26 },
-                ];
+                const devicesList = analyticsData?.webAnalytics?.devices || [];
 
-                const browsersList = analyticsData?.webAnalytics?.browsers || [
-                  { name: "Chrome", percentage: 58, count: 151 },
-                  { name: "Safari", percentage: 24, count: 62 },
-                  { name: "Edge", percentage: 10, count: 26 },
-                  { name: "Firefox", percentage: 8, count: 21 },
-                ];
+                const browsersList = analyticsData?.webAnalytics?.browsers || [];
 
-                const osList = analyticsData?.webAnalytics?.operatingSystems || [
-                  { name: "Windows", percentage: 30, count: 78 },
-                  { name: "iOS", percentage: 24, count: 62 },
-                  { name: "Android", percentage: 20, count: 52 },
-                  { name: "Mac", percentage: 15, count: 39 },
-                  { name: "Ubuntu", percentage: 11, count: 29 },
-                ];
+                const osList = analyticsData?.webAnalytics?.operatingSystems || [];
 
                 const currentDeviceList = waSubTabDevice === "devices" ? devicesList : browsersList;
 
                 return (
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    {/* Breakdown 1: Countries */}
+                    {/* Breakdown 1: Countries with Real Flag Badges */}
                     <div className="technical-card rounded-xl p-4 flex flex-col justify-between">
                       <div>
                         <div className="flex items-center justify-between pb-2.5 border-b border-[var(--border)] text-xs font-mono">
@@ -1226,21 +1218,45 @@ export default function AdminDashboardPage() {
 
                         {/* Scrollable list inside card */}
                         <div className="mt-3 space-y-2 max-h-56 overflow-y-auto pr-1.5 scrollbar-thin select-none">
-                          {countriesList.map((item: any, idx: number) => (
-                            <div key={item.name + idx} className="relative rounded-md overflow-hidden bg-[var(--surface)] text-xs font-mono py-1.5 px-2 hover:bg-[var(--surface-hover)] transition-colors">
-                              <div
-                                className="absolute inset-y-0 left-0 bg-blue-500/10 border-r border-blue-500/30"
-                                style={{ width: `${Math.max(item.percentage, 2)}%` }}
-                              />
-                              <div className="relative flex items-center justify-between">
-                                <div className="flex items-center gap-2 truncate flex-1 min-w-0 pr-2">
-                                  <span className="text-sm shrink-0">{item.flag || "🌐"}</span>
-                                  <span className="truncate text-[var(--text-primary)]">{item.name}</span>
-                                </div>
-                                <span className="font-bold text-[var(--text-primary)]">{item.percentage}%</span>
-                              </div>
+                          {countriesList.length === 0 ? (
+                            <div className="py-6 text-center text-xs font-mono text-[var(--text-muted)]">
+                              Belum ada data negara
                             </div>
-                          ))}
+                          ) : (
+                            countriesList.map((item: any, idx: number) => {
+                              const flagCode = getCountryCode(item);
+                              return (
+                                <div key={item.name + idx} className="relative rounded-md overflow-hidden bg-[var(--surface)] text-xs font-mono py-1.5 px-2 hover:bg-[var(--surface-hover)] transition-colors">
+                                  <div
+                                    className="absolute inset-y-0 left-0 bg-blue-500/10 border-r border-blue-500/30"
+                                    style={{ width: `${Math.max(item.percentage, 2)}%` }}
+                                  />
+                                  <div className="relative flex items-center justify-between">
+                                    <div className="flex items-center gap-2 truncate flex-1 min-w-0 pr-2">
+                                      {flagCode ? (
+                                        <img
+                                          src={`https://flagcdn.com/20x15/${flagCode}.png`}
+                                          srcSet={`https://flagcdn.com/40x30/${flagCode}.png 2x`}
+                                          width="20"
+                                          height="15"
+                                          alt={item.name}
+                                          className="w-4.5 h-3.5 rounded-2xs object-cover shrink-0 border border-white/10 shadow-2xs"
+                                          loading="lazy"
+                                          onError={(e) => {
+                                            (e.currentTarget as HTMLElement).style.display = "none";
+                                          }}
+                                        />
+                                      ) : (
+                                        <span className="text-xs shrink-0">🌐</span>
+                                      )}
+                                      <span className="truncate text-[var(--text-primary)]">{item.name}</span>
+                                    </div>
+                                    <span className="font-bold text-[var(--text-primary)]">{item.percentage}%</span>
+                                  </div>
+                                </div>
+                              );
+                            })
+                          )}
                         </div>
                       </div>
 
@@ -1384,40 +1400,19 @@ export default function AdminDashboardPage() {
               if (waExpandedModal === "countries") {
                 modalTitle = "Daftar Lengkap Negara Pengunjung";
                 modalSubtitle = "Distribusi geolokasi dan asal pengunjung platform ZailTrack berdasarkan IP & Vercel Telemetry";
-                modalItems = analyticsData?.webAnalytics?.countries || [
-                  { name: "United States", flag: "🇺🇸", percentage: 46, count: 120, code: "US" },
-                  { name: "Indonesia", flag: "🇮🇩", percentage: 29, count: 75, code: "ID" },
-                  { name: "Singapore", flag: "🇸🇬", percentage: 10, count: 26, code: "SG" },
-                  { name: "United Kingdom", flag: "🇬🇧", percentage: 9, count: 23, code: "GB" },
-                  { name: "Germany", flag: "🇩🇪", percentage: 4, count: 10, code: "DE" },
-                ];
+                modalItems = analyticsData?.webAnalytics?.countries || [];
               } else if (waExpandedModal === "devices") {
                 modalTitle = "Daftar Lengkap Perangkat (Devices)";
                 modalSubtitle = "Breakdown kategori perangkat yang digunakan pengunjung saat mengakses web platform";
-                modalItems = analyticsData?.webAnalytics?.devices || [
-                  { name: "Desktop", percentage: 55, count: 143 },
-                  { name: "Mobile", percentage: 35, count: 91 },
-                  { name: "Tablet", percentage: 10, count: 26 },
-                ];
+                modalItems = analyticsData?.webAnalytics?.devices || [];
               } else if (waExpandedModal === "browsers") {
                 modalTitle = "Daftar Lengkap Peramban (Browsers)";
                 modalSubtitle = "Breakdown jenis aplikasi web browser yang digunakan pengunjung platform";
-                modalItems = analyticsData?.webAnalytics?.browsers || [
-                  { name: "Chrome", percentage: 58, count: 151 },
-                  { name: "Safari", percentage: 24, count: 62 },
-                  { name: "Edge", percentage: 10, count: 26 },
-                  { name: "Firefox", percentage: 8, count: 21 },
-                ];
+                modalItems = analyticsData?.webAnalytics?.browsers || [];
               } else if (waExpandedModal === "os") {
                 modalTitle = "Daftar Lengkap Sistem Operasi (OS)";
                 modalSubtitle = "Breakdown sistem operasi perangkat yang mengakses platform ZailTrack";
-                modalItems = analyticsData?.webAnalytics?.operatingSystems || [
-                  { name: "Windows", percentage: 30, count: 78 },
-                  { name: "iOS", percentage: 24, count: 62 },
-                  { name: "Android", percentage: 20, count: 52 },
-                  { name: "Mac", percentage: 15, count: 39 },
-                  { name: "Ubuntu", percentage: 11, count: 29 },
-                ];
+                modalItems = analyticsData?.webAnalytics?.operatingSystems || [];
               }
 
               const filteredItems = modalItems.filter((item) =>
@@ -1493,7 +1488,29 @@ export default function AdminDashboardPage() {
                                 }`}>
                                   #{index + 1}
                                 </span>
-                                {item.flag && <span className="text-lg shrink-0">{item.flag}</span>}
+                                {(() => {
+                                  const code = getCountryCode(item);
+                                  if (code && waExpandedModal === "countries") {
+                                    return (
+                                      <img
+                                        src={`https://flagcdn.com/28x21/${code}.png`}
+                                        srcSet={`https://flagcdn.com/56x42/${code}.png 2x`}
+                                        width="28"
+                                        height="21"
+                                        alt={item.name}
+                                        className="w-6 h-4.5 rounded-2xs object-cover shrink-0 border border-white/10 shadow-2xs"
+                                        loading="lazy"
+                                        onError={(e) => {
+                                          (e.currentTarget as HTMLElement).style.display = "none";
+                                        }}
+                                      />
+                                    );
+                                  }
+                                  if (item.flag) {
+                                    return <span className="text-base shrink-0">{item.flag}</span>;
+                                  }
+                                  return null;
+                                })()}
                                 <div className="min-w-0 flex-1">
                                   <div className="font-semibold text-[var(--text-primary)] truncate flex items-center gap-2">
                                     <span>{item.name}</span>

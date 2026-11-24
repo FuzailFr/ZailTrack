@@ -238,12 +238,13 @@ export async function GET(request: Request) {
       return "🌐";
     }
 
+    const totalCountryCount = countriesBreakdown.reduce((acc: number, c: any) => acc + Number(c.count), 0) || 1;
     const countries = countriesBreakdown.map((c: any) => ({
       name: c.name,
       code: c.code,
       flag: getCountryFlag(c.code),
       count: Number(c.count),
-      percentage: totalVisCount > 0 ? Math.round((Number(c.count) / totalVisCount) * 100) : 0,
+      percentage: Math.round((Number(c.count) / totalCountryCount) * 100),
     }));
 
     const totalDevCount = devicesBreakdown.reduce((acc: number, d: any) => acc + Number(d.count), 0) || 1;
@@ -270,9 +271,7 @@ export async function GET(request: Request) {
     const dbWebAnalytics = {
       domain: "zail-track.vercel.app",
       visitors: totalVisCount,
-      pageViews: Math.max(totalPvCount, 55784),
-      bounceRate: 20,
-      bounceRateChange: "+20%",
+      pageViews: totalPvCount,
       liveOnline: onlineCount,
       trend: trafficTrend.map((row: any, idx: number) => ({
         date: row.date,

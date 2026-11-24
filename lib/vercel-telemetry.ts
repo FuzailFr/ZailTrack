@@ -142,8 +142,6 @@ export async function getLiveVercelAnalytics() {
       domain: "zail-track.vercel.app",
       visitors: totalVisitors,
       pageViews: totalPageViews,
-      bounceRate: 20,
-      bounceRateChange: "+20%",
       liveOnline,
       trend,
       countries,
